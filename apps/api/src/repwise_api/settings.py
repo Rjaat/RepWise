@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +16,14 @@ class Settings(BaseSettings):
 
     env: Literal["development", "test", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    database_url: str = "postgresql+psycopg://repwise:repwise@127.0.0.1:5432/repwise"
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        if not value.startswith(("postgresql+psycopg://", "sqlite+aiosqlite://")):
+            raise ValueError("database_url must use psycopg or test-only aiosqlite")
+        return value
 
 
 @lru_cache
