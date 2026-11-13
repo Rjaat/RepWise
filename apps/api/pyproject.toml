@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic==1.17.2",
+    "celery[redis]==5.5.3",
     "fastapi==0.121.1",
     "psycopg[binary]==3.2.12",
     "pydantic-settings==2.11.0",
@@ -45,6 +46,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.13"
 strict = true
 packages = ["repwise_api"]
+
+[[tool.mypy.overrides]]
+module = ["repwise_api.smoke", "repwise_api.worker"]
+disable_error_code = ["import-untyped"]
 
 [tool.coverage.run]
 branch = true

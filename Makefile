@@ -1,4 +1,4 @@
-.PHONY: setup dev-web dev-api format lint typecheck test build check
+.PHONY: setup dev-web dev-api services-up services-down services-smoke format lint typecheck test build check
 
 export UV_CACHE_DIR := .cache/uv
 
@@ -12,6 +12,15 @@ dev-web:
 dev-api:
 	uv run --project apps/api uvicorn repwise_api.main:app --host 127.0.0.1 --port $${REPWISE_API_PORT:-8010} --reload
 
+services-up:
+	docker compose -f infra/compose.yaml up -d --build --wait
+
+services-down:
+	docker compose -f infra/compose.yaml down
+
+services-smoke:
+	uv run --project apps/api python -m repwise_api.smoke
+
 format:
 	pnpm --filter @repwise/web format
 	uv run --project apps/api ruff format .
@@ -22,7 +31,7 @@ lint:
 
 typecheck:
 	pnpm typecheck
-	uv run --project apps/api mypy apps/api/src
+	uv run --project apps/api mypy --config-file apps/api/pyproject.toml apps/api/src
 
 test:
 	pnpm test

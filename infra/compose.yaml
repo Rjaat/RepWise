@@ -1,0 +1,99 @@
+name: repwise-local
+
+services:
+  postgres:
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: repwise
+      POSTGRES_USER: repwise
+      POSTGRES_PASSWORD: ${REPWISE_POSTGRES_PASSWORD:-repwise-local-only}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repwise -d repwise"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:56379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  media:
+    image: repwise-minio:local
+    build:
+      context: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${REPWISE_MEDIA_ACCESS_KEY:-repwise-local}
+      MINIO_ROOT_PASSWORD: ${REPWISE_MEDIA_SECRET_KEY:-repwise-local-only}
+    ports:
+      - "127.0.0.1:59000:9000"
+      - "127.0.0.1:59001:9001"
+    volumes:
+      - media-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  media-init:
+    image: repwise-minio:local
+    depends_on:
+      media:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${REPWISE_MEDIA_ACCESS_KEY:-repwise-local}
+      MINIO_ROOT_PASSWORD: ${REPWISE_MEDIA_SECRET_KEY:-repwise-local-only}
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set local http://media:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing local/repwise-private
+        mc anonymous set none local/repwise-private
+    restart: "no"
+
+  media-worker:
+    build:
+      context: ..
+      dockerfile: workers/media/Dockerfile
+    environment:
+      REPWISE_ENV: development
+      REPWISE_REDIS_URL: redis://redis:6379/0
+      REPWISE_DATABASE_URL: postgresql+psycopg://repwise:${REPWISE_POSTGRES_PASSWORD:-repwise-local-only}@postgres:5432/repwise
+      REPWISE_MEDIA_ENDPOINT: http://media:9000
+      REPWISE_MEDIA_BUCKET: repwise-private
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      media-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A repwise_api.worker.celery_app inspect ping --destination celery@$${HOSTNAME} --timeout 3 | grep -q pong"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  media-data:
