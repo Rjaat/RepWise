@@ -6,7 +6,7 @@ Version 1.0 · 13 November 2026
 
 ## Purpose
 
-This is the design specification for RepWise, a premium exercise-video analysis application. Use it alongside `Exercise_Analysis_E2E_Plan.md`. That plan defines functional scope and evidence requirements; this README defines how those capabilities should look, feel and behave. The brand name and tagline are approved. The visual system below is the proposed direction for implementation.
+This is the design specification for RepWise, a premium exercise-video analysis application. Use it alongside `RepWise_E2E_Plan.md`. That plan defines functional scope and evidence requirements; this README defines how those capabilities should look, feel and behave. The brand name and tagline are approved. The visual system below is the proposed direction for implementation.
 
 Design a calm, precise and refined product that feels equally comfortable in a premium training studio and a personal gym session. Express luxury through typography, proportion, material-like colour, photography and careful interaction design. Keep the exercise and the user's video at the centre of attention.
 
