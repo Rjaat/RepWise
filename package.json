@@ -7,10 +7,10 @@
     "node": ">=22.22.0 <23"
   },
   "scripts": {
-    "build": "pnpm --filter @repwise/web build",
+    "build": "pnpm --recursive --if-present build",
     "dev": "pnpm --filter @repwise/web dev",
-    "lint": "pnpm --filter @repwise/web lint",
-    "test": "pnpm --filter @repwise/web test",
-    "typecheck": "pnpm --filter @repwise/web typecheck"
+    "lint": "pnpm --recursive --if-present lint",
+    "test": "pnpm --recursive --if-present test",
+    "typecheck": "pnpm --recursive --if-present typecheck"
   }
 }
