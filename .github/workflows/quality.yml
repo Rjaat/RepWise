@@ -35,7 +35,7 @@ jobs:
           cache: pnpm
 
       - name: Set up Python and uv
-        uses: astral-sh/setup-uv@v7.1.4
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           version: 0.9.5
           python-version: '3.13'
