@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema/exercise-contract.schema.json",
+  "schema_version": "1.0.0",
+  "contract_id": "bodyweight-squat.side",
+  "contract_version": 1,
+  "exercise": "bodyweight_squat",
+  "variant": "bodyweight",
+  "view": "side",
+  "pose_schema": "mediapipe_pose_33@1",
+  "required_landmarks": [
+    "left_shoulder", "right_shoulder", "left_hip", "right_hip",
+    "left_knee", "right_knee", "left_ankle", "right_ankle",
+    "left_heel", "right_heel", "left_foot_index", "right_foot_index"
+  ],
+  "view_constraints": {"allowed": ["left_side", "right_side"], "single_person": true, "full_body_required": true},
+  "minimum_observation": {"landmark_visibility": 0.6, "required_landmark_coverage": 0.8, "minimum_complete_reps": 1},
+  "phase_states": ["standing", "descending", "bottom", "ascending"],
+  "thresholds": {
+    "standing_knee_angle_degrees": {"min": 155, "max": 180},
+    "bottom_knee_angle_degrees": {"min": 45, "max": 140},
+    "phase_duration_seconds": {"min": 0.1, "max": 10.0}
+  },
+  "supported_checks": [
+    {"id": "rep_count", "enabled": false, "validation_status": "candidate"},
+    {"id": "phase_timing", "enabled": false, "validation_status": "candidate"},
+    {"id": "visible_depth_consistency", "enabled": false, "validation_status": "candidate"},
+    {"id": "apparent_knee_angle_excursion", "enabled": false, "validation_status": "candidate"},
+    {"id": "incomplete_return", "enabled": false, "validation_status": "candidate"}
+  ],
+  "unavailable_checks": ["frontal_knee_tracking", "internal_loading", "precise_3d_joint_mechanics"],
+  "explanation_templates": {
+    "depth_inconsistency": "Visible squat depth varied across assessable repetitions.",
+    "incomplete_return": "The visible knee angle did not return to the standing range."
+  },
+  "validation": {"status": "draft", "coach_review_required": true, "release_evidence": null}
+}
