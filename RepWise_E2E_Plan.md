@@ -405,7 +405,204 @@ Track capture completion, number of reposition attempts, setup rejection, analys
 6. Expand one check and one exercise at a time.
 7. Add optional learned/VLM components only when an identified failure and comparative evidence justify them.
 
-## 26. Primary technical references
+## 26. Development operating model
+
+Development proceeds in vertical, reviewable slices. A pull request is complete only when its code, tests, observability, migration impact and documentation are reviewable together. Avoid long-lived frontend, backend and model branches that integrate only at the end.
+
+### Repository layout
+
+```text
+apps/
+  web/                 React application and browser capture
+  api/                 FastAPI HTTP application
+workers/
+  media/               Decode, normalisation and thumbnail jobs
+  analysis/            Pose, segmentation and assessment jobs
+packages/
+  contracts/           Generated API client and shared schemas
+  ui/                  RepWise design-system components
+  exercise-contracts/  Versioned exercise/view/rule definitions
+infra/                 Local containers and deployment configuration
+tests/
+  fixtures/            Licensed synthetic and consented test assets
+  e2e/                 Cross-service browser journeys
+docs/                  Decisions, runbooks and evaluation reports
+```
+
+The first implementation remains a modular monorepo. Boundaries above make ownership and tests clear without requiring independently deployed microservices.
+
+### Branches, commits and pull requests
+
+- Protect `main`; merge through pull requests after required checks pass.
+- Use short branches such as `feat/upload-session`, `fix/vfr-timestamps` and `docs/retention-policy`.
+- Use Conventional Commits: `feat(web): add upload review`, `test(api): cover duplicate submissions`.
+- Keep a PR focused on one independently testable outcome. Split changes that mix infrastructure, unrelated refactors and product behaviour.
+- Prefer squash merges so every merged PR becomes one understandable change on `main`.
+- Require at least one reviewer for application changes and a qualified assessment reviewer for exercise-rule changes.
+- Never merge generated secrets, raw participant recordings or unrestricted signed media URLs.
+
+### Required pull-request evidence
+
+Every PR includes:
+
+1. Problem and user-visible outcome.
+2. Scope and explicit non-goals.
+3. Screenshots or recordings for UI changes; request/response examples for APIs.
+4. Tests run and their results.
+5. Privacy, security, accessibility and migration impact, using “none” only with a reason.
+6. Rollout and rollback notes for runtime, schema, model or rule changes.
+7. Linked issue, milestone and updated documentation where behaviour changed.
+
+Draft PRs are encouraged for contract review. Do not use draft status to accumulate an unreviewable multi-week branch.
+
+## 27. Definition of done and CI gates
+
+A product slice is done when the supported happy path and declared failures work across the real boundary: browser, API, queue, worker, storage and report. A mocked UI alone is not end-to-end completion.
+
+| Gate | Required evidence |
+| --- | --- |
+| Format and static analysis | Frontend lint/typecheck; backend lint/typecheck; schema and migration validation |
+| Unit tests | State reducers, assessment features, temporal logic, permission checks and utility boundaries |
+| Contract tests | OpenAPI compatibility, generated client freshness, exercise-contract schema validation and job payload compatibility |
+| Integration tests | PostgreSQL, Redis, object storage and worker execution using isolated test resources |
+| Browser E2E | Chromium on every PR; Firefox/WebKit and the supported mobile viewport set on scheduled/release runs |
+| Media fixtures | Short deterministic clips covering rotation, variable frame rate, missing frames, corrupt input and unsuitable views |
+| Accessibility | Automated checks plus keyboard/focus review for changed journeys |
+| Security and privacy | Dependency/secret scanning, authorization tests, signed-URL scope, log redaction and deletion propagation |
+| Performance | Bundle budget, API latency smoke checks and worker benchmark comparison for affected paths |
+| Operations | Health checks, structured error category, metrics and a recovery path for new asynchronous behaviour |
+
+Flaky tests are treated as defects. Quarantining one requires an owner, issue and expiry date; a quarantined release-gate test cannot count as passing.
+
+## 28. Milestones and pull-request delivery plan
+
+PR numbers below are sequencing identifiers, not pre-created GitHub numbers. Each PR should be merged before dependent work begins unless the dependency is an agreed contract that can be developed safely in parallel.
+
+### Milestone A — Engineering foundation
+
+| PR | Branch | Deliverable | Acceptance gate | Depends on |
+| --- | --- | --- | --- | --- |
+| PR-01 | `chore/monorepo-bootstrap` | Workspace layout, pinned toolchains, local environment example and task runner | Web/API placeholder health checks run locally; no secrets committed | — |
+| PR-02 | `ci/quality-gates` | Lint, typecheck, unit, contract, build, dependency and secret checks | Required checks run on a sample PR and block an intentional failure | PR-01 |
+| PR-03 | `feat/design-foundations` | Tokens, typography, accessible primitives and responsive app shell | Story/demo states pass keyboard, contrast and automated accessibility checks | PR-01 |
+| PR-04 | `feat/api-foundation` | FastAPI app, configuration, PostgreSQL, Alembic, request IDs and structured errors | Fresh database migrates up/down; health/readiness distinguish dependencies | PR-01, PR-02 |
+| PR-05 | `feat/local-services` | Redis, private object storage and worker containers for development/test | One command starts isolated services; smoke job completes and cleans up | PR-04 |
+
+Milestone exit: a contributor can clone, configure, test and run the shell system from documented steps, and CI enforces the same baseline.
+
+### Milestone B — Upload-first vertical slice
+
+| PR | Branch | Deliverable | Acceptance gate | Depends on |
+| --- | --- | --- | --- | --- |
+| PR-06 | `feat/exercise-contracts` | Versioned squat/side-view contract schema, seed definition and validation CLI | Invalid landmarks, thresholds and unsupported checks fail validation | PR-04 |
+| PR-07 | `feat/upload-api` | Authenticated upload initiation/completion/cancel with ownership, limits and idempotency | Duplicate completion produces one media asset/job; foreign access is denied | PR-05 |
+| PR-08 | `feat/upload-web` | Exercise selection, file review, progress, cancellation and recoverable errors | Keyboard/mobile flow covers valid, oversized, cancelled and failed upload | PR-03, PR-07 |
+| PR-09 | `feat/media-preflight` | Checksum, ffprobe validation, rotation/VFR-aware normalisation and audio removal | Fixture matrix preserves timestamp mapping and rejects corrupt media safely | PR-07 |
+| PR-10 | `feat/pose-artifacts` | Pinned pose worker, landmark adapter, confidence/missingness and versioned artifact storage | Deterministic fixture output records model/checksum/schema metadata | PR-06, PR-09 |
+| PR-11 | `feat/squat-segmentation` | Squat phase state machine, complete/partial reps and timestamp-based tempo | Held-out fixture tests meet proof-stage count/timing thresholds or abstain | PR-10 |
+| PR-12 | `feat/evidence-report` | Immutable report schema, assessability states, replay mapping and report UI | Selecting a rep seeks to its evidence; missing metrics never display as zero | PR-08, PR-11 |
+| PR-13 | `test/upload-report-journey` | Full browser-to-worker E2E suite, failure injection and initial runbook | Upload → process → report passes without service mocks; retry creates no duplicate | PR-12 |
+
+Milestone exit: an authenticated internal user can upload a supported side-view squat and receive an evidence-linked count/tempo report, while unsuitable or failed media receives an actionable terminal state.
+
+### Milestone C — Guided camera capture
+
+| PR | Branch | Deliverable | Acceptance gate | Depends on |
+| --- | --- | --- | --- | --- |
+| PR-14 | `feat/camera-capabilities` | Permission recovery, device selection, recorder format negotiation and capability telemetry | Supported-device matrix documents actual formats and degraded paths | PR-03, PR-07 |
+| PR-15 | `feat/capture-readiness` | Worker inference, framing/visibility/view/stability checks and instruction hysteresis | Difficult setup set measures false-ready rate; UI emits one stable prompt at a time | PR-06, PR-10, PR-14 |
+| PR-16 | `feat/practice-rep` | Practice-rep state, suitability result and explicit exclusion from analysed set | Practice motion verifies coverage and cannot appear in final rep count | PR-11, PR-15 |
+| PR-17 | `feat/recording-recovery` | Countdown, recording, interruption recovery, preview, discard and upload handoff | Backgrounding, track loss and active-exit cases preserve or discard exactly as shown | PR-14, PR-16 |
+| PR-18 | `test/guided-capture-journey` | Physical-device E2E scenarios and camera accessibility checklist | Declared browsers/devices pass setup → practice → record → report and recovery cases | PR-17 |
+
+Milestone exit: guided capture improves accepted-footage coverage on physical target devices without implying that readiness guarantees correct form.
+
+### Milestone D — Private alpha
+
+| PR | Branch | Deliverable | Acceptance gate | Depends on |
+| --- | --- | --- | --- | --- |
+| PR-19 | `feat/auth-sessions` | Production identity integration, verified accounts, secure sessions and role checks | Session rotation/revocation and every privileged route have authorization tests | PR-04 |
+| PR-20 | `feat/history-retention` | Session history, raw-video expiry, deletion requests and tombstone propagation | Deletion test proves raw/derived assets are inaccessible and not recreated by retry | PR-12, PR-19 |
+| PR-21 | `feat/report-feedback` | Wrong-count/tracking/advice feedback tied to analysis and rule versions | Feedback is auditable, permission-scoped and contains no public media URL | PR-12, PR-19 |
+| PR-22 | `feat/pushup-contract` | Coach-reviewed side-view push-up rules, fixtures and report cues | Independent per-check evaluation passes its release contract; weak checks remain disabled | PR-06, PR-13 |
+| PR-23 | `feat/curl-contract` | Coach-reviewed standing-curl rules, fixtures and report cues | Independent per-check evaluation passes its release contract; weak checks remain disabled | PR-06, PR-13 |
+| PR-24 | `feat/annotation-review` | Restricted assignment, annotation, adjudication and release-approval workflow | Reviewers see assigned consented assets only; access and decisions are audited | PR-19, PR-21 |
+| PR-25 | `feat/operations-dashboard` | Queue/failure/storage/cost metrics, retry controls, alerts and support grants | Injected worker/storage failures alert, recover and preserve deletion/ownership rules | PR-20, PR-24 |
+
+Milestone exit: invited users can complete supported journeys with account security, history, correction feedback, deletion and operational support. Every enabled exercise check has versioned review evidence.
+
+### Milestone E — Validated beta
+
+| PR | Branch | Deliverable | Acceptance gate | Depends on |
+| --- | --- | --- | --- | --- |
+| PR-26 | `feat/progress-comparison` | Compatible-session trends with version, view and coverage context | Incompatible sessions cannot produce a misleading comparison | PR-20, PR-23 |
+| PR-27 | `feat/export-privacy` | Account/report export and full account deletion orchestration | Export authorization and deletion completion are tested across all stores | PR-20 |
+| PR-28 | `feat/release-controls` | Feature flags, canary cohorts, model/rule promotion and last-known-good rollback | A faulty check can be disabled without redeploying or altering historical reports | PR-24, PR-25 |
+| PR-29 | `test/release-evaluation` | Participant-split evaluation, subgroup/failure report and adversarial report suite | Results meet section 20 gates with sample sizes/intervals, or scope is narrowed | PR-22, PR-23, PR-28 |
+| PR-30 | `feat/beta-guardrails` | Quotas, usage ledger and optional payment path behind a disabled flag | Retries/rejections never duplicate usage or charges; limits fail transparently | PR-25, PR-29 |
+| PR-31 | `release/validated-beta` | Production checklist, legal/privacy sign-off references, restore drill and rollback rehearsal | All enabled checks and supported devices have signed release evidence | PR-27–PR-30 |
+
+Milestone exit: the beta scope is defined by measured evidence. Missing gates remove or narrow a capability; they do not become launch exceptions.
+
+## 29. Issue and PR decomposition rules
+
+Create one tracking issue per milestone and one issue per PR-sized outcome above. Each implementation issue must contain user value, acceptance criteria, failure cases, dependencies, instrumentation and out-of-scope items.
+
+Split a planned PR when any of these becomes true:
+
+- Review requires unrelated domain experts.
+- The change introduces more than one independently deployable migration.
+- UI review is blocked on an unsettled API or assessment contract.
+- A model/rule evaluation cannot be reviewed separately from runtime plumbing.
+- Rollback of one part should not roll back the other.
+
+Do not split a vertical slice merely by file type. For example, the upload API and upload UI are separate above because each has a stable contract and meaningful independent tests; the report schema and evidence UI remain together because their correctness depends on the same evidence mapping.
+
+## 30. Environments, fixtures and release flow
+
+| Environment | Purpose | Data policy |
+| --- | --- | --- |
+| Local | Development with deterministic services and tiny fixtures | Synthetic or explicitly approved fixtures only |
+| CI | Disposable integration and browser tests | Generated/synthetic media; no participant data |
+| Staging | Release candidate, device testing and consented internal evaluation | Restricted consented data with production-like access controls |
+| Production | Private alpha/beta users | Private-by-default user media and declared retention |
+
+Promote immutable application images, exercise contracts and model artifacts; do not rebuild them per environment. Database migrations use expand/migrate/contract where a breaking schema transition is necessary. Roll out new assessment versions to internal recordings, then a canary cohort, then the supported population. Rollback disables new work while preserving the version needed to render historical reports.
+
+Test media needs a manifest containing source/consent category, expected container properties, exercise/view, expected suitability, expected rep/phase annotations, permitted environments and expiry. Never copy an arbitrary customer recording into a fixture directory.
+
+## 31. End-to-end acceptance journeys
+
+Before each milestone exit, test the applicable journeys across real service boundaries:
+
+1. New user selects squat, uploads valid video, leaves during processing, returns and opens a synchronised evidence report.
+2. Duplicate submit/retry produces one billable analysis and one immutable report version.
+3. Corrupt, oversized, unsupported-codec, ambiguous-subject and unsuitable-view videos fail with distinct recovery guidance.
+4. Camera permission denial can be recovered without losing configured exercise context.
+5. Guided capture handles cropped joints, wrong view, camera movement, practice failure, interruption, discard and successful recovery.
+6. Partial reps and low-visibility intervals are excluded or marked uncertain without fabricated values.
+7. Optional analysis components time out while the primary report completes safely.
+8. A user cannot access another user’s upload, job, report, export, signed URL or deleted asset.
+9. Video expiry/deletion removes replay and derived media while preserving only the metrics the user chose to retain.
+10. A disabled rule stops new findings, historical reports retain their pinned interpretation, and rollback is observable.
+11. Keyboard and screen-reader users can upload, follow processing, select a rep, inspect a finding and submit feedback.
+12. Backup restoration recovers durable metadata without resurrecting expired or tombstoned media.
+
+## 32. First development sprint
+
+The first sprint should produce PR-01 through PR-04 and draft PR-06. Its reviewable outcome is a runnable, tested shell with one versioned squat assessment contract—not a simulated analysis dashboard.
+
+Suggested order:
+
+1. Create milestone/issue templates and protect `main`.
+2. Merge the monorepo bootstrap and CI gates.
+3. Merge design foundations and API/database foundation in parallel after contracts stabilise.
+4. Review the squat contract with a qualified coach while infrastructure work continues.
+5. Start PR-05 only after local configuration, migrations and CI are reproducible.
+
+Sprint review demonstrates setup from a clean clone, CI enforcement, accessible foundation components, database migration/reversal, API health semantics and validation failures for an invalid exercise contract.
+
+## 33. Primary technical references
 
 Accessed 13 November 2026. Technical capabilities are sourced here; architecture choices and release targets above are recommendations.
 
