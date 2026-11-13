@@ -1,0 +1,16 @@
+{
+  "name": "repwise",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=22.22.0 <23"
+  },
+  "scripts": {
+    "build": "pnpm --filter @repwise/web build",
+    "dev": "pnpm --filter @repwise/web dev",
+    "lint": "pnpm --filter @repwise/web lint",
+    "test": "pnpm --filter @repwise/web test",
+    "typecheck": "pnpm --filter @repwise/web typecheck"
+  }
+}
