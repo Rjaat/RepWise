@@ -16,7 +16,10 @@ class Settings(BaseSettings):
 
     env: Literal["development", "test", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    database_url: str = "postgresql+psycopg://repwise:repwise@127.0.0.1:5432/repwise"
+    database_url: str = "postgresql+psycopg://repwise:repwise@127.0.0.1:55432/repwise"
+    redis_url: str = "redis://127.0.0.1:56379/0"
+    media_endpoint: str = "http://127.0.0.1:59000"
+    media_bucket: str = "repwise-private"
 
     @field_validator("database_url")
     @classmethod
