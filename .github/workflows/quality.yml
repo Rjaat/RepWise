@@ -1,0 +1,103 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4.2.0
+        with:
+          version: 10.12.1
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Set up Python and uv
+        uses: astral-sh/setup-uv@v7.1.4
+        with:
+          version: 0.9.5
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+
+      - name: Install locked dependencies
+        run: make setup
+
+      - name: Verify lockfiles are unchanged
+        run: |
+          pnpm install --frozen-lockfile --lockfile-only
+          uv lock --project apps/api --check
+          git diff --exit-code -- pnpm-lock.yaml apps/api/uv.lock
+
+      - name: Run quality gate
+        run: make check
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: repwise-web-${{ github.sha }}
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4.2.0
+        with:
+          version: 10.12.1
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Audit production JavaScript dependencies
+        run: pnpm audit --prod --audit-level high
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6.0.1
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4.8.2
+        with:
+          fail-on-severity: high
+          deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, SSPL-1.0
