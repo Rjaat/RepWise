@@ -50,6 +50,8 @@ make check
 This runs formatting-independent lint checks, static type checks, unit tests
 and the production web build. Pull requests must keep this command green.
 
+See `CONTRIBUTING.md` for the PR acceptance, impact-review and commit rules.
+
 ## Workspace
 
 ```text
