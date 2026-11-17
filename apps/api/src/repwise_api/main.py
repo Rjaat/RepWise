@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from repwise_api.annotations import router as annotations_router
 from repwise_api.auth_routes import router as auth_router
 from repwise_api.database import (
     create_database_engine,
@@ -81,6 +82,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(retention_router)
     application.include_router(feedback_router)
+    application.include_router(annotations_router)
     application.add_api_route(
         "/ready",
         readiness,

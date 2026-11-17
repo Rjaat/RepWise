@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -176,6 +177,99 @@ class ReportFeedback(Base):
     comment: Mapped[str | None] = mapped_column(String(1000))
     report_schema_version: Mapped[str] = mapped_column(String(64))
     rule_version: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class ResearchConsent(Base):
+    __tablename__ = "research_consents"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    purpose: Mapped[str] = mapped_column(String(255))
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AnnotationAssignment(Base):
+    __tablename__ = "annotation_assignments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), index=True
+    )
+    consent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("research_consents.id", ondelete="CASCADE")
+    )
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(32), default="assigned")
+    assigned_by: Mapped[uuid.UUID]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class Annotation(Base):
+    __tablename__ = "annotations"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("annotation_assignments.id", ondelete="CASCADE"), unique=True
+    )
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    labels: Mapped[dict[str, object]] = mapped_column(JSON)
+    uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class Adjudication(Base):
+    __tablename__ = "adjudications"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("annotation_assignments.id", ondelete="CASCADE"), unique=True
+    )
+    adjudicator_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    decision: Mapped[dict[str, object]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class ReleaseApproval(Base):
+    __tablename__ = "release_approvals"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    rule_version: Mapped[str] = mapped_column(String(64), index=True)
+    adjudication_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("adjudications.id", ondelete="RESTRICT")
+    )
+    approver_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    decision: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    action: Mapped[str] = mapped_column(String(128), index=True)
+    resource_type: Mapped[str] = mapped_column(String(64))
+    resource_id: Mapped[uuid.UUID]
+    details: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
