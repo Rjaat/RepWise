@@ -59,10 +59,12 @@ export function CameraSetup({
   onTelemetry = () => undefined,
   readiness,
   practiceOutcome = 'suitable',
+  onPracticeComplete = () => undefined,
 }: {
   onTelemetry?: (event: TelemetryEvent) => void
   readiness?: Readiness
   practiceOutcome?: 'suitable' | 'retry'
+  onPracticeComplete?: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -134,6 +136,7 @@ export function CameraSetup({
       setPractice('active')
     } else if (practice === 'active') {
       setPractice(practiceOutcome)
+      if (practiceOutcome === 'suitable') onPracticeComplete()
     } else if (practice === 'retry') {
       setPractice('active')
     }
