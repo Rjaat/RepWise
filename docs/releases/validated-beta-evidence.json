@@ -1,0 +1,23 @@
+{
+  "release_status": "blocked",
+  "evidence": {
+    "coach_signoff_pushup": {"status": "pending", "reference": "https://github.com/Rjaat/RepWise/pull/35"},
+    "coach_signoff_curl": {"status": "pending", "reference": "https://github.com/Rjaat/RepWise/pull/36"},
+    "participant_evaluation": {"status": "pending", "reference": "https://github.com/Rjaat/RepWise/pull/42"},
+    "device_matrix": {"status": "pending", "reference": "https://github.com/Rjaat/RepWise/pull/31"},
+    "legal_privacy": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#legal-and-privacy"},
+    "database_restore_drill": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#restore-drill"},
+    "media_restore_drill": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#restore-drill"},
+    "rule_rollback_rehearsal": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#rollback-rehearsal"},
+    "deployment_rollback_rehearsal": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#rollback-rehearsal"},
+    "production_security_review": {"status": "pending", "reference": "docs/releases/validated-beta-runbook.md#production-checklist"}
+  },
+  "enabled_checks": [
+    {"check_id": "squat.rep_count", "coach_approval": "pending", "evaluation_gate": "pending"},
+    {"check_id": "pushup.rep_count", "coach_approval": "pending", "evaluation_gate": "pending"},
+    {"check_id": "curl.rep_count", "coach_approval": "pending", "evaluation_gate": "pending"}
+  ],
+  "supported_devices": [
+    {"device_id": "pending-physical-device-matrix", "physical_test": "pending", "reference": "https://github.com/Rjaat/RepWise/pull/31"}
+  ]
+}
