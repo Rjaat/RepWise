@@ -8,6 +8,7 @@ from celery import Celery
 
 from repwise_api.media import normalize_media
 from repwise_api.pose import ModelIdentity, build_pose_artifact_file
+from repwise_api.reports import build_squat_report
 from repwise_api.settings import get_settings
 from repwise_api.squat import extract_knee_angle_samples, segment_squats
 from repwise_api.storage import MinioObjectStorage
@@ -35,6 +36,12 @@ class SegmentationTaskResult(TypedDict):
     outcome: str
     complete_rep_count: int
     partial_rep_count: int
+
+
+class ReportTaskResult(TypedDict):
+    report_object_key: str
+    report_sha256: str
+    rep_count: int
 
 
 settings = get_settings()
@@ -141,4 +148,40 @@ def squat_segmentation_task(
         "outcome": result.outcome,
         "complete_rep_count": len(result.complete_reps),
         "partial_rep_count": len(result.partial_reps),
+    }
+
+
+@celery_app.task(name="repwise.report.publish")  # type: ignore[misc]
+def publish_report_task(
+    segmentation_object_key: str,
+    segmentation_file_sha256: str,
+    analysis_id: str,
+    source_sha256: str,
+    pose_artifact_sha256: str,
+) -> ReportTaskResult:
+    storage = MinioObjectStorage(settings)
+    report_key = f"analyses/{analysis_id}/report.v1.json"
+    with TemporaryDirectory(prefix="repwise-report-") as directory:
+        segmentation_path = Path(directory) / "segmentation.json"
+        report_path = Path(directory) / "report.json"
+        storage.download(segmentation_object_key, str(segmentation_path))
+        segmentation_bytes = segmentation_path.read_bytes()
+        if hashlib.sha256(segmentation_bytes).hexdigest() != segmentation_file_sha256:
+            raise ValueError("Segmentation artifact checksum mismatch")
+        segmentation = json.loads(segmentation_bytes)
+        if not isinstance(segmentation, dict):
+            raise ValueError("Segmentation artifact must be an object")
+        report = build_squat_report(
+            segmentation,
+            analysis_id=analysis_id,
+            source_sha256=source_sha256,
+            pose_artifact_sha256=pose_artifact_sha256,
+            segmentation_artifact_sha256=segmentation_file_sha256,
+        )
+        report_path.write_bytes(report.canonical_payload() + b"\n")
+        storage.upload(report_key, str(report_path), "application/json")
+    return {
+        "report_object_key": report_key,
+        "report_sha256": report.checksum(),
+        "rep_count": len(report.reps),
     }
