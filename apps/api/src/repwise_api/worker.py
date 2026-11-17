@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,6 +9,7 @@ from celery import Celery
 from repwise_api.media import normalize_media
 from repwise_api.pose import ModelIdentity, build_pose_artifact_file
 from repwise_api.settings import get_settings
+from repwise_api.squat import extract_knee_angle_samples, segment_squats
 from repwise_api.storage import MinioObjectStorage
 
 
@@ -26,6 +28,13 @@ class PoseTaskResult(TypedDict):
     artifact_object_key: str
     artifact_sha256: str
     frame_count: int
+
+
+class SegmentationTaskResult(TypedDict):
+    segmentation_object_key: str
+    outcome: str
+    complete_rep_count: int
+    partial_rep_count: int
 
 
 settings = get_settings()
@@ -100,4 +109,36 @@ def pose_artifact_task(
         "artifact_object_key": artifact_key,
         "artifact_sha256": str(artifact["artifact_sha256"]),
         "frame_count": int(artifact["summary"]["frame_count"]),
+    }
+
+
+@celery_app.task(name="repwise.squat.segment")  # type: ignore[misc]
+def squat_segmentation_task(
+    pose_artifact_key: str,
+    pose_artifact_sha256: str,
+    frame_width: int,
+    frame_height: int,
+) -> SegmentationTaskResult:
+    storage = MinioObjectStorage(settings)
+    segmentation_key = f"{pose_artifact_key}.squat-segmentation.v1.json"
+    with TemporaryDirectory(prefix="repwise-squat-") as directory:
+        pose_path = Path(directory) / "pose.json"
+        segmentation_path = Path(directory) / "segmentation.json"
+        storage.download(pose_artifact_key, str(pose_path))
+        if hashlib.sha256(pose_path.read_bytes()).hexdigest() != pose_artifact_sha256:
+            raise ValueError("Pose artifact checksum mismatch")
+        pose_artifact = json.loads(pose_path.read_text(encoding="utf-8"))
+        if not isinstance(pose_artifact, dict):
+            raise ValueError("Pose artifact must be an object")
+        samples = extract_knee_angle_samples(pose_artifact, frame_width, frame_height)
+        result = segment_squats(samples)
+        segmentation_path.write_text(
+            f"{json.dumps(result.to_dict(), sort_keys=True)}\n", encoding="utf-8"
+        )
+        storage.upload(segmentation_key, str(segmentation_path), "application/json")
+    return {
+        "segmentation_object_key": segmentation_key,
+        "outcome": result.outcome,
+        "complete_rep_count": len(result.complete_reps),
+        "partial_rep_count": len(result.partial_reps),
     }

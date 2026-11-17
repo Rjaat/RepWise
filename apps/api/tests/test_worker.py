@@ -1,3 +1,6 @@
+import hashlib
+import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -10,6 +13,7 @@ from repwise_api.worker import (
     media_preflight_task,
     pose_artifact_task,
     smoke_task,
+    squat_segmentation_task,
 )
 
 
@@ -94,3 +98,40 @@ def test_pose_task_persists_private_versioned_artifact() -> None:
     storage.download.assert_called_once()
     storage.upload.assert_called_once()
     assert build.call_args.kwargs["model"].version == "1.2.3"
+
+
+def test_squat_task_verifies_and_persists_segmentation() -> None:
+    storage = Mock()
+    pose_bytes = json.dumps({"frames": []}).encode()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_bytes(pose_bytes)
+
+    storage.download.side_effect = download
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        result = squat_segmentation_task(
+            "users/1/pose.json", hashlib.sha256(pose_bytes).hexdigest(), 100, 200
+        )
+
+    assert result == {
+        "segmentation_object_key": ("users/1/pose.json.squat-segmentation.v1.json"),
+        "outcome": "not_assessable",
+        "complete_rep_count": 0,
+        "partial_rep_count": 0,
+    }
+    storage.upload.assert_called_once()
+
+
+def test_squat_task_rejects_checksum_and_non_object_artifact() -> None:
+    storage = Mock()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text("[]", encoding="utf-8")
+
+    storage.download.side_effect = download
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        with pytest.raises(ValueError, match="checksum mismatch"):
+            squat_segmentation_task("pose.json", "a" * 64, 100, 200)
+        checksum = hashlib.sha256(b"[]").hexdigest()
+        with pytest.raises(ValueError, match="must be an object"):
+            squat_segmentation_task("pose.json", checksum, 100, 200)
