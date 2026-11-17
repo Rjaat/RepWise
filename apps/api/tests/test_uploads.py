@@ -252,12 +252,14 @@ def test_browser_origin_can_preflight_authenticated_uploads() -> None:
 def test_minio_adapter_signs_stats_and_removes_private_objects() -> None:
     client = Mock()
     client.presigned_put_object.return_value = "https://signed.test/upload"
+    client.presigned_get_object.return_value = "https://signed.test/review"
     stat = Mock(size=12, metadata={"X-Amz-Meta-Sha256": SHA256})
     client.stat_object.return_value = stat
 
     with patch("repwise_api.storage.Minio", return_value=client) as constructor:
         adapter = MinioObjectStorage(Settings())
         assert adapter.presigned_put("private/source") == "https://signed.test/upload"
+        assert adapter.presigned_get("private/source") == "https://signed.test/review"
         stored = adapter.stat("private/source")
         adapter.remove("private/source")
 
