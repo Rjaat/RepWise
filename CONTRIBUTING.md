@@ -1,45 +1,57 @@
 # Contributing to RepWise
 
-RepWise is developed as reviewable vertical slices defined in
-`RepWise_E2E_Plan.md`. Start from the next uncompleted PR in section 28 and keep
-its acceptance gate visible in the linked issue and pull request.
+RepWise accepts changes as independently reviewable product or engineering
+outcomes. Read the [product specification](RepWise_E2E_Plan.md),
+[interface specification](RepWise_UI_UX_README.md), and the component guide for
+the area being changed before implementation.
 
-## Local gate
+## Development environment
+
+Use the toolchain versions pinned by the repository. Install dependencies and
+run the complete validation gate from the repository root:
 
 ```bash
 make setup
 make check
 ```
 
-Use the pinned Node, pnpm, Python and uv versions. Update the relevant manifest
-and lockfile together when changing a dependency. Do not bypass a failing gate
-or commit generated build output.
+Update a dependency manifest and its lockfile in the same change. Do not commit
+generated build output, local environment files, credentials, customer media,
+or unapproved fixtures.
 
 ## Branches and commits
 
-- Branch from current `main` using the planned branch name where practical.
-- Keep one independently reviewable outcome per pull request.
-- Use Conventional Commits with a short imperative subject.
-- Use `rjaat` as the author and committer identity.
-- Do not add tool, assistant or automated-generation attribution to commits,
-  pull requests, code or documentation.
+- Branch from the latest `main` and keep one rollback decision per pull request.
+- Use Conventional Commits with a concise imperative subject.
+- Use `rjaat` and `58986628+Rjaat@users.noreply.github.com` as the approved Git
+  author and committer identity.
+- Do not add assistant, tool, or automated-generation attribution to commits,
+  pull requests, source files, or documentation.
+- Preserve unrelated local changes and do not rewrite shared history without an
+  explicit repository-maintenance decision.
 
-## Pull requests
+## Pull-request requirements
 
-Complete every section of the pull request template. A PR must describe its
-failure behaviour, data/security/accessibility impact, validation and rollback
-path. Documentation-only and no-impact answers still need a brief reason.
+Complete every section of the pull-request template. Each change must state:
 
-Do not split work only by frontend/backend file type when the user outcome needs
-both to be reviewable. Do split migrations, assessment evaluations and runtime
-plumbing when they have independent rollout or rollback decisions.
+- the user or operator outcome and explicit exclusions;
+- success, empty, partial, failure, and retry behavior where applicable;
+- privacy, security, accessibility, migration, cost, and observability impact;
+- automated and manual validation evidence; and
+- rollout order and a safe rollback procedure.
+
+Frontend, API, worker, migration, and documentation changes that deliver one
+outcome should remain together unless they require independent deployment or
+rollback decisions.
 
 ## Product constraints
 
-- Keep recordings private by default.
-- Never use invented user analysis, testimonials or accuracy claims.
-- Represent assessed, uncertain and not-assessable states explicitly.
-- Link findings to evidence and pinned analysis versions.
-- Do not introduce injury-risk, diagnosis, safety certification or a universal
-  form score.
-- Use only synthetic or explicitly approved fixtures in local and CI workflows.
+- Keep recordings and derived artifacts private by default.
+- Represent assessed, uncertain, and not-assessable states explicitly.
+- Pin findings and feedback to immutable source, model, rule, and schema
+  versions.
+- Never publish fabricated analysis, testimonials, performance claims, or
+  synthetic evaluation results as customer evidence.
+- Do not introduce medical diagnosis, injury-risk prediction, safety
+  certification, or a universal form score.
+- Use only synthetic or explicitly approved media in local and CI workflows.

@@ -1,12 +1,17 @@
-# RepWise — UI/UX Design README
+# RepWise interface specification
 
 **Understand your form. Improve every rep.**
 
-Version 1.0 · 13 November 2026
+Version 1.1 · reviewed 17 November 2026
 
 ## Purpose
 
-This is the design specification for RepWise, a premium exercise-video analysis application. Use it alongside `RepWise_E2E_Plan.md`. That plan defines functional scope and evidence requirements; this README defines how those capabilities should look, feel and behave. The brand name and tagline are approved. The visual system below is the proposed direction for implementation.
+This document is the normative interface specification for RepWise. Read it with
+the [product and engineering specification](RepWise_E2E_Plan.md), which defines
+functional scope, privacy boundaries, assessment evidence, and release gates.
+This document defines visual language, interaction behavior, responsive layout,
+accessibility, content states, and screen-level acceptance criteria. The brand
+name, tagline, and visual system below are approved implementation requirements.
 
 Design a calm, precise and refined product that feels equally comfortable in a premium training studio and a personal gym session. Express luxury through typography, proportion, material-like colour, photography and careful interaction design. Keep the exercise and the user's video at the centre of attention.
 
@@ -386,7 +391,9 @@ Marketing images are separate from assessment evidence. Label mock reports and s
 - Lazy-load camera models and heavy analysis/player modules when needed; show download/error states.
 - Keep inference off the main UI thread; throttle visual updates independently of inference.
 - Store user preferences for overlay visibility and audio cues, respecting privacy choices.
-- Design camera mode as its own operational workspace; full-app dark mode is a later enhancement unless separately scoped.
+- Treat camera mode as a dedicated operational workspace. A full-application
+  dark theme is outside the validated-beta scope and requires a separate
+  accessibility and token review.
 
 Suggested component names: `AppShell`, `ExerciseCard`, `AssessmentScope`, `CaptureModeSelector`, `CameraWorkspace`, `ReadinessChecklist`, `SetupInstruction`, `PracticeRepStep`, `RecordingControls`, `UploadPanel`, `AnalysisProgress`, `EvidencePlayer`, `RepTimeline`, `MetricBlock`, `FindingPanel`, `AssessmentCoverage`, `SessionList`, `ProgressChart`, `PrivacyControls`.
 
@@ -401,7 +408,10 @@ Suggested component names: `AppShell`, `ExerciseCard`, `AssessmentScope`, `Captu
 7. Accessibility notes, keyboard map, responsive behaviour and content specifications.
 8. Engineering handoff with tokens, component contracts, asset licences and acceptance checklist.
 
-Prototypes may use clearly labelled sample data; production screens must never present it as user analysis. Later features such as billing, sharing and coach review remain clearly scoped in the handoff.
+Prototypes may use clearly labelled sample data; production screens must never
+present it as user analysis. Billing, sharing, and customer coach-review flows
+are outside the validated-beta interface scope unless their product,
+authorization, consent, and release requirements are approved separately.
 
 ## 13. Acceptance checklist
 

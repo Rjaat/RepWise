@@ -1,13 +1,16 @@
 # Camera capability matrix
 
-Validated 2026-11-17 against the automated capability harness. Physical-device
-validation remains required in PR-18 before declaring a browser supported.
+The automated capability harness was last executed on 17 November 2026.
+Physical-device results remain pending; no browser or device in this document
+is approved for validated beta until the
+[guided-capture checklist](guided-capture-device-checklist.md) records a signed
+result with exact hardware, operating-system, and browser versions.
 
-| Browser family | Preview request | Preferred recording | Degraded path |
+| Browser family | Requested preview | Recorder selection order | Degraded behavior |
 | --- | --- | --- | --- |
-| Chromium desktop/Android | `getUserMedia`, environment preference | VP9 WebM, then VP8 WebM | Generic WebM, MP4, then replay-only/upload |
-| Safari macOS/iOS | `getUserMedia`, environment preference | MP4 when exposed | Replay-only/upload when no MIME candidate is supported |
-| Firefox desktop/Android | `getUserMedia`, environment preference | VP9/VP8 WebM | Generic WebM, then replay-only/upload |
+| Chromium desktop/Android | `getUserMedia` with rear-camera preference | VP9 WebM, then VP8 WebM | Generic WebM, MP4, then replay-only or file upload |
+| Safari macOS/iOS | `getUserMedia` with rear-camera preference | MP4 when the browser exposes it | Replay-only or file upload when no candidate MIME type is supported |
+| Firefox desktop/Android | `getUserMedia` with rear-camera preference | VP9 WebM, then VP8 WebM | Generic WebM, then replay-only or file upload |
 
 The application queries `MediaRecorder.isTypeSupported`; it does not infer
 support from the user-agent string. Permission denial, missing devices, busy
