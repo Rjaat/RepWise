@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     media_access_key: str = "repwise-local"
     media_secret_key: str = "repwise-local-only"
     web_origin: str = "http://127.0.0.1:5173"
+    auth_issuer: str = "repwise"
+    auth_audience: str = "repwise-api"
+    auth_signing_secret: str = "repwise-development-signing-secret-change-me"
+    identity_assertion_secret: str = "repwise-development-identity-secret-change-me"
+    access_token_ttl_seconds: int = 900
+    refresh_token_ttl_seconds: int = 30 * 24 * 60 * 60
+    allow_legacy_bearer_identity: bool = True
 
     @field_validator("database_url")
     @classmethod
@@ -30,6 +37,22 @@ class Settings(BaseSettings):
         if not value.startswith(("postgresql+psycopg://", "sqlite+aiosqlite://")):
             raise ValueError("database_url must use psycopg or test-only aiosqlite")
         return value
+
+    @model_validator(mode="after")
+    def validate_production_auth(self) -> "Settings":
+        if self.env == "production":
+            if self.allow_legacy_bearer_identity:
+                raise ValueError(
+                    "legacy bearer identity must be disabled in production"
+                )
+            if (
+                min(len(self.auth_signing_secret), len(self.identity_assertion_secret))
+                < 32
+            ):
+                raise ValueError(
+                    "production authentication secrets must be at least 32 characters"
+                )
+        return self
 
 
 @lru_cache
