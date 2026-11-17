@@ -98,6 +98,8 @@ class AnalysisJob(Base):
     )
     owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     status: Mapped[str] = mapped_column(String(32), default="queued")
+    current_stage: Mapped[str] = mapped_column(String(32), default="dispatch")
+    worker_task_id: Mapped[str | None] = mapped_column(String(64), unique=True)
     report_schema_version: Mapped[str] = mapped_column(
         String(64), default="repwise.evidence-report.v1"
     )
@@ -115,6 +117,12 @@ class AnalysisJob(Base):
     )
     raw_expired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)

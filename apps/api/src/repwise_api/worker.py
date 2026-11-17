@@ -28,6 +28,10 @@ class MediaTaskResult(TypedDict):
     preflight: dict[str, Any]
 
 
+class AnalysisPreflightResult(MediaTaskResult):
+    analysis_id: str
+
+
 class PoseTaskResult(TypedDict):
     artifact_object_key: str
     artifact_sha256: str
@@ -100,6 +104,19 @@ def media_preflight_task(object_key: str, expected_sha256: str) -> MediaTaskResu
         "normalized_object_key": normalized_key,
         "manifest_object_key": manifest_key,
         "preflight": result.to_dict(),
+    }
+
+
+@celery_app.task(name="repwise.analysis.preflight")  # type: ignore[misc]
+def analysis_preflight_task(
+    analysis_id: str, object_key: str, expected_sha256: str
+) -> AnalysisPreflightResult:
+    result = media_preflight_task(object_key, expected_sha256)
+    return {
+        "analysis_id": analysis_id,
+        "normalized_object_key": result["normalized_object_key"],
+        "manifest_object_key": result["manifest_object_key"],
+        "preflight": result["preflight"],
     }
 
 

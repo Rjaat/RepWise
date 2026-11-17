@@ -9,6 +9,7 @@ import pytest
 from repwise_api.media import MediaProbe, PreflightResult
 from repwise_api.smoke import main
 from repwise_api.worker import (
+    analysis_preflight_task,
     capture_readiness_task,
     celery_app,
     media_preflight_task,
@@ -70,6 +71,23 @@ def test_media_task_moves_private_artifacts_and_returns_manifest() -> None:
     assert result["preflight"]["normalized_sha256"] == "b" * 64
     storage.download.assert_called_once()
     assert storage.upload.call_count == 2
+
+
+def test_analysis_preflight_links_media_result_to_analysis() -> None:
+    media_result = {
+        "normalized_object_key": "private/source.normalized.mp4",
+        "manifest_object_key": "private/source.preflight.json",
+        "preflight": {"normalized_sha256": "b" * 64},
+    }
+    with patch(
+        "repwise_api.worker.media_preflight_task", return_value=media_result
+    ) as preflight:
+        result = analysis_preflight_task(
+            "analysis-001", "private/source", "a" * 64
+        )
+
+    assert result == {"analysis_id": "analysis-001", **media_result}
+    preflight.assert_called_once_with("private/source", "a" * 64)
 
 
 def test_pose_task_persists_private_versioned_artifact() -> None:

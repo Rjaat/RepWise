@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from repwise_api.analysis import AnalysisDispatcher, request_dispatcher
 from repwise_api.annotations import audit
 from repwise_api.auth import Principal, require_roles
 from repwise_api.database import request_session
@@ -16,6 +17,7 @@ from repwise_api.errors import ApiError
 from repwise_api.models import (
     AnalysisArtifact,
     AnalysisJob,
+    MediaUpload,
     OperationalAlert,
     SupportAccessGrant,
     UserAccount,
@@ -23,7 +25,12 @@ from repwise_api.models import (
 )
 
 router = APIRouter(prefix="/v1", tags=["operations"])
-TRANSIENT_FAILURES = {"worker_timeout", "worker_crash", "storage_unavailable"}
+TRANSIENT_FAILURES = {
+    "broker_unavailable",
+    "worker_timeout",
+    "worker_crash",
+    "storage_unavailable",
+}
 MAX_RETRIES = 3
 
 
@@ -137,6 +144,7 @@ async def retry_job(  # pragma: no cover - ASGI integration covered
     analysis_id: uuid.UUID,
     principal: Annotated[Principal, Depends(require_roles(UserRole.ADMIN))],
     db: Annotated[AsyncSession, Depends(request_session)],
+    dispatcher: Annotated[AnalysisDispatcher, Depends(request_dispatcher)],
 ) -> RetryResponse:
     analysis = await db.get(AnalysisJob, analysis_id, with_for_update=True)
     if not analysis or analysis.deleted_at:
@@ -147,6 +155,7 @@ async def retry_job(  # pragma: no cover - ASGI integration covered
         raise ApiError(409, "retry_limit_reached", "Retry limit reached.")
     analysis.retry_count += 1
     analysis.status = "queued"
+    analysis.current_stage = "dispatch"
     alerts = await db.scalars(
         select(OperationalAlert).where(
             OperationalAlert.analysis_id == analysis.id,
@@ -163,6 +172,19 @@ async def retry_job(  # pragma: no cover - ASGI integration covered
         analysis.id,
         {"retry_count": analysis.retry_count},
     )
+    await db.commit()
+    upload = await db.get(MediaUpload, analysis.upload_id)
+    if not upload:
+        raise ApiError(409, "upload_not_found", "Analysis source upload is missing.")
+    try:
+        analysis.worker_task_id = dispatcher(
+            analysis.id, upload.object_key, upload.expected_sha256
+        )
+        analysis.current_stage = "preflight"
+        analysis.last_error_category = None
+    except Exception:
+        analysis.status = "dispatch_failed"
+        analysis.last_error_category = "broker_unavailable"
     await db.commit()
     return RetryResponse(
         analysis_id=analysis.id,
