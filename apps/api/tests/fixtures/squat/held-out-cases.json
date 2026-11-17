@@ -1,0 +1,19 @@
+[
+  {
+    "id": "two-complete-variable-rate",
+    "expected_complete_reps": 2,
+    "expected_outcome": "assessed",
+    "samples": [
+      [0.00, 170], [0.07, 165], [0.18, 150], [0.31, 135], [0.46, 100],
+      [0.58, 106], [0.71, 141], [0.86, 160], [0.94, 170],
+      [1.20, 170], [1.29, 163], [1.41, 149], [1.56, 133], [1.70, 98],
+      [1.83, 104], [1.99, 142], [2.12, 161], [2.25, 170]
+    ]
+  },
+  {
+    "id": "insufficient-tracking",
+    "expected_complete_reps": 0,
+    "expected_outcome": "not_assessable",
+    "samples": [[0.00, 170], [0.10, null], [0.20, null], [0.30, 130]]
+  }
+]
