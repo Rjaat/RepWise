@@ -60,6 +60,15 @@ VIEW_CHECKS = {
             "trunk_line_consistency",
         }
     ),
+    ("standing_curl", "side"): frozenset(
+        {
+            "rep_count",
+            "phase_timing",
+            "visible_range_consistency",
+            "incomplete_extension",
+            "upper_arm_drift",
+        }
+    ),
 }
 REQUIRED_FIELDS = frozenset(
     {

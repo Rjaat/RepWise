@@ -1,0 +1,53 @@
+{
+  "$schema": "../schema/exercise-contract.schema.json",
+  "schema_version": "1.0.0",
+  "contract_id": "standing-curl.side",
+  "contract_version": 1,
+  "exercise": "standing_curl",
+  "variant": "standing_single-or-bilateral",
+  "view": "side",
+  "pose_schema": "mediapipe_pose_33@1",
+  "required_landmarks": [
+    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+    "left_wrist", "right_wrist", "left_hip", "right_hip"
+  ],
+  "view_constraints": {
+    "allowed": ["left_side", "right_side"],
+    "single_person": true,
+    "full_body_required": false,
+    "required_framing": "head through hips and working hand visible"
+  },
+  "minimum_observation": {
+    "landmark_visibility": 0.65,
+    "required_landmark_coverage": 0.85,
+    "minimum_complete_reps": 2
+  },
+  "phase_states": ["extended", "curling", "top", "lowering"],
+  "thresholds": {
+    "extended_elbow_angle_degrees": {"min": 145, "max": 180},
+    "top_elbow_angle_degrees": {"min": 25, "max": 100},
+    "phase_duration_seconds": {"min": 0.1, "max": 10.0},
+    "upper_arm_drift_degrees": {"min": 0, "max": 30}
+  },
+  "supported_checks": [
+    {"id": "rep_count", "enabled": false, "validation_status": "candidate"},
+    {"id": "phase_timing", "enabled": false, "validation_status": "candidate"},
+    {"id": "visible_range_consistency", "enabled": false, "validation_status": "candidate"},
+    {"id": "incomplete_extension", "enabled": false, "validation_status": "candidate"},
+    {"id": "upper_arm_drift", "enabled": false, "validation_status": "candidate"}
+  ],
+  "unavailable_checks": [
+    "external_load", "muscle_activation", "pain_or_injury_risk",
+    "precise_3d_joint_mechanics", "grip_force"
+  ],
+  "explanation_templates": {
+    "visible_range_inconsistency": "Visible elbow-angle range varied across assessable repetitions.",
+    "incomplete_extension": "The visible elbow angle did not return to the contract's extended range.",
+    "upper_arm_drift": "The visible upper-arm angle shifted during this repetition. Load and training intent are not known."
+  },
+  "validation": {
+    "status": "draft",
+    "coach_review_required": true,
+    "release_evidence": "../evaluation/standing-curl.side.v1.held-out.json"
+  }
+}

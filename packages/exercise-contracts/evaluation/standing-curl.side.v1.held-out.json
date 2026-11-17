@@ -1,0 +1,34 @@
+{
+  "contract_id": "standing-curl.side",
+  "contract_version": 1,
+  "fixture_kind": "synthetic_rule_outputs",
+  "coach_signoff": null,
+  "release_thresholds": {"precision": 0.9, "recall": 0.7},
+  "checks": {
+    "rep_count": {"cases": [
+      {"id": "three-clean-reps", "expected": true, "observed": true},
+      {"id": "partial-only", "expected": false, "observed": false},
+      {"id": "working-wrist-hidden", "expected": false, "observed": false}
+    ]},
+    "phase_timing": {"cases": [
+      {"id": "timestamped-clean-rep", "expected": true, "observed": true},
+      {"id": "missing-top", "expected": false, "observed": false},
+      {"id": "tracking-gap", "expected": false, "observed": false}
+    ]},
+    "visible_range_consistency": {"cases": [
+      {"id": "consistent-visible-range", "expected": true, "observed": true},
+      {"id": "body-rotation", "expected": false, "observed": true},
+      {"id": "mixed-range", "expected": true, "observed": false}
+    ]},
+    "incomplete_extension": {"cases": [
+      {"id": "clear-short-return", "expected": true, "observed": true},
+      {"id": "complete-return", "expected": false, "observed": false},
+      {"id": "wrist-occlusion", "expected": false, "observed": false}
+    ]},
+    "upper_arm_drift": {"cases": [
+      {"id": "clear-visible-drift", "expected": true, "observed": true},
+      {"id": "stable-upper-arm", "expected": false, "observed": false},
+      {"id": "camera-shift", "expected": false, "observed": true}
+    ]}
+  }
+}
