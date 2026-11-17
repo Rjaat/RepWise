@@ -376,6 +376,8 @@ class BetaQuota(Base):
     owner_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     limit_units: Mapped[int]
     used_units: Mapped[int] = mapped_column(default=0)
+    cycle_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resets_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
