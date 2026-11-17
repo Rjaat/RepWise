@@ -16,6 +16,7 @@ from repwise_api.feedback import router as feedback_router
 from repwise_api.middleware import request_id_middleware
 from repwise_api.operations import router as operations_router
 from repwise_api.privacy import router as privacy_router
+from repwise_api.release_controls import router as release_controls_router
 from repwise_api.retention import router as retention_router
 from repwise_api.settings import Settings, get_settings
 from repwise_api.storage import MinioObjectStorage
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     application.include_router(annotations_router)
     application.include_router(operations_router)
     application.include_router(privacy_router)
+    application.include_router(release_controls_router)
     application.add_api_route(
         "/ready",
         readiness,
