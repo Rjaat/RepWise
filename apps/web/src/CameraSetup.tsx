@@ -21,6 +21,16 @@ type CameraState =
   | { kind: 'ready'; recorderMimeType: string | null }
   | { kind: 'failed'; failure: CameraFailure }
 
+type Readiness = {
+  ready: boolean
+  instruction: string
+  checks: {
+    full_movement_visible: boolean
+    side_view_suitable: boolean
+    camera_stable: boolean
+  }
+}
+
 const failureCopy: Record<CameraFailure, { title: string; message: string }> = {
   permission_denied: {
     title: 'Camera access is blocked',
@@ -47,8 +57,10 @@ const failureCopy: Record<CameraFailure, { title: string; message: string }> = {
 
 export function CameraSetup({
   onTelemetry = () => undefined,
+  readiness,
 }: {
   onTelemetry?: (event: TelemetryEvent) => void
+  readiness?: Readiness
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -139,15 +151,28 @@ export function CameraSetup({
         >
           <StatusBadge>Side view required</StatusBadge>
           <h2 id="camera-instruction">
-            {state.kind === 'ready'
-              ? 'Camera connected'
-              : 'Connect your camera'}
+            {state.kind === 'ready' && readiness
+              ? readiness.instruction
+              : state.kind === 'ready'
+                ? 'Camera connected'
+                : 'Connect your camera'}
           </h2>
           <p>
             {state.kind === 'ready'
               ? 'Next, position the phone so your head and feet stay in frame.'
               : 'We will ask for camera access and show the preview before recording.'}
           </p>
+          {state.kind === 'ready' && readiness && (
+            <ul className="camera-checklist" aria-label="Capture readiness">
+              <li data-ready={readiness.checks.full_movement_visible}>
+                Full movement visible
+              </li>
+              <li data-ready={readiness.checks.side_view_suitable}>
+                Side view suitable
+              </li>
+              <li data-ready={readiness.checks.camera_stable}>Camera stable</li>
+            </ul>
+          )}
           {devices.length > 1 && (
             <label
               className="camera-instructions__device"
@@ -189,13 +214,20 @@ export function CameraSetup({
           <Button
             fullWidth
             onClick={() => void startCamera()}
-            disabled={state.kind === 'requesting'}
+            disabled={
+              state.kind === 'requesting' ||
+              (state.kind === 'ready' &&
+                readiness !== undefined &&
+                !readiness.ready)
+            }
           >
-            {state.kind === 'requesting'
-              ? 'Connecting camera'
-              : state.kind === 'failed'
-                ? 'Try camera again'
-                : 'Use camera'}
+            {state.kind === 'ready' && readiness?.ready
+              ? 'Try one practice rep'
+              : state.kind === 'requesting'
+                ? 'Connecting camera'
+                : state.kind === 'failed'
+                  ? 'Try camera again'
+                  : 'Use camera'}
           </Button>
           <a className="camera-instructions__upload" href="/analyse">
             Upload a video instead

@@ -102,6 +102,29 @@
   color: var(--rw-color-text-secondary);
   font-size: 0.875rem;
 }
+.camera-checklist {
+  display: grid;
+  gap: var(--rw-space-3);
+  margin: var(--rw-space-6) 0;
+  padding: 0;
+  list-style: none;
+}
+.camera-checklist li {
+  display: flex;
+  align-items: center;
+  gap: var(--rw-space-3);
+}
+.camera-checklist li::before {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--rw-color-border-control);
+  border-radius: 50%;
+  content: '';
+}
+.camera-checklist li[data-ready='true']::before {
+  border-color: var(--rw-color-success);
+  background: var(--rw-color-success);
+}
 .camera-instructions__upload {
   display: block;
   margin-top: var(--rw-space-4);
