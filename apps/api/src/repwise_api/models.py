@@ -101,6 +101,9 @@ class AnalysisJob(Base):
         String(64), default="repwise.evidence-report.v1"
     )
     rule_version: Mapped[str] = mapped_column(String(64), default="squat.side.v1")
+    retry_count: Mapped[int] = mapped_column(default=0)
+    last_error_category: Mapped[str | None] = mapped_column(String(64))
+    estimated_cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
     raw_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC) + timedelta(days=30)
     )
@@ -126,6 +129,7 @@ class AnalysisArtifact(Base):
     )
     object_key: Mapped[str] = mapped_column(String(255), unique=True)
     kind: Mapped[ArtifactKind] = mapped_column(Enum(ArtifactKind, native_enum=False))
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -270,6 +274,34 @@ class AuditEvent(Base):
     resource_type: Mapped[str] = mapped_column(String(64))
     resource_id: Mapped[uuid.UUID]
     details: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class OperationalAlert(Base):
+    __tablename__ = "operational_alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    category: Mapped[str] = mapped_column(String(64), index=True)
+    message: Mapped[str] = mapped_column(String(500))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class SupportAccessGrant(Base):
+    __tablename__ = "support_access_grants"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    support_user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    granted_by: Mapped[uuid.UUID]
+    case_reference: Mapped[str] = mapped_column(String(128))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
