@@ -6,7 +6,7 @@ fixtures are synthetic and must never be cited as product performance.
 ## Required evidence
 
 - Obtain explicit research consent and coach-labelled ground truth.
-- Recruit at least 30 test participants across intended exercises, devices,
+- Recruit at least 30 test participants across release-scope exercises, devices,
   viewpoints, clothing, lighting, body proportions, speeds, and natural failures.
 - Assign complete participants to train, validation, or test before tuning. A
   participant appearing in multiple splits invalidates the run.

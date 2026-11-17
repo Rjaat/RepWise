@@ -1,12 +1,32 @@
-# Exercise Video Analysis — End-to-End Product and Implementation Plan
+# RepWise product and engineering specification
 
-Version 1.0 · 13 November 2026
+Version 1.1 · reviewed 17 November 2026
+
+## Document status
+
+This document defines product boundaries, target behavior, evidence standards,
+architecture, and the delivery sequence used to build RepWise. It is a
+specification, not proof that a model, exercise check, browser, device, or
+release gate has passed validation.
+
+Runtime behavior is defined by executable contracts, migrations, and tests.
+Interface behavior is defined by
+[`RepWise_UI_UX_README.md`](RepWise_UI_UX_README.md). Release approval requires
+the durable evidence listed in
+[`docs/releases/validated-beta-runbook.md`](docs/releases/validated-beta-runbook.md).
+Historical pull-request identifiers in section 28 record delivery decomposition;
+they are not operational instructions or evidence of release readiness.
 
 ## 1. Product decision
 
 Build a consumer exercise-analysis application that accepts uploaded videos or guided camera recordings, measures supported movement features, and provides evidence-linked feedback after a set. Its core advantage is controlled capture plus validated, exercise-specific assessment.
 
-This is a proposed specification, not evidence that the models achieve the targets below. Timelines, limits and release thresholds are initial planning decisions to validate. This plan assumes an adult consumer audience, one person per recording, a responsive web application first, and access to a qualified exercise coach for defining and reviewing assessments. Budget, brand, hosting region and commercial pricing remain undecided.
+Quantitative thresholds in this specification are release targets until a
+participant-disjoint evaluation produces reviewed results. The product targets
+adults, one person per recording, and a responsive web application. Exercise
+checks require a qualified coach to define and review their observable criteria.
+Hosting region, commercial pricing, and launch budget require separate founder,
+legal, and operational approval before public release.
 
 The first public release supports selected exercises and viewpoints. It does not claim to diagnose injuries, determine spinal loading, measure muscle activation, or certify that an exercise is safe. No universal form percentage or injury-risk score.
 
@@ -224,9 +244,9 @@ Example: “Nine reps were assessable for descent timing. Rep 7 was faster than 
 
 Legal/privacy review is a launch dependency for the actual audience and hosting region. This document does not claim regulatory compliance.
 
-## 14. Proposed technical architecture
+## 14. Technical architecture
 
-| Layer | Proposed implementation |
+| Layer | Implementation standard |
 | --- | --- |
 | Web | React + TypeScript + Vite; responsive PWA shell |
 | Live inference | MediaPipe Tasks Vision in a Web Worker; explicit capability detection |
@@ -316,7 +336,7 @@ Split by participant before modelling. Hold out complete participants and additi
 
 Measure exact count agreement, count MAE, phase boundary/timing error, error-specific precision/recall, coverage/abstention, unsuitable-footage rejection, setup false-ready rate, report grounding and failure disparities. Report both conditional performance on accepted recordings and end-to-end performance on all attempted sessions.
 
-## 20. Proposed release gates
+## 20. Release gates
 
 These are initial product targets to refine with the coach and pilot data, not achieved results or universal standards. Report sample sizes and confidence intervals; expand evaluation where estimates are too uncertain.
 

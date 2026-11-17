@@ -1,8 +1,9 @@
 # Run RepWise on any machine
 
-The portable stack runs the web app, API, migration job, PostgreSQL, Redis,
-private media storage, and analysis worker in Docker. It is intended for local
-evaluation and trusted self-hosted development, not an internet-facing launch.
+The portable stack runs the web application, API, migration job, PostgreSQL,
+Redis, private media storage, and analysis worker in Docker. Use it for local
+evaluation and trusted self-hosted development. It is not approved for an
+internet-facing production deployment.
 
 ## Requirements
 
@@ -44,8 +45,8 @@ docker compose --env-file .env.portable -f compose.portable.yaml down --volumes
 Edit `.env.portable`, set `REPWISE_PUBLIC_HOST` to the host machine's LAN IP, and
 set `REPWISE_BIND_ADDRESS=0.0.0.0`; then run `./scripts/repwise up`. Allow the
 configured web and media ports through the host firewall only on a trusted
-private network. The proof-stage identity is not appropriate for public
-exposure.
+private network. The configured internal development identity does not provide
+an acceptable authentication boundary for public exposure.
 
 ## Configuration
 
