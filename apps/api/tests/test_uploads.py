@@ -315,6 +315,7 @@ def test_upload_service_branches_are_deterministic() -> None:
         session = Mock()
         session.scalar = AsyncMock(return_value=upload)
         session.commit = AsyncMock()
+        session.flush = AsyncMock()
 
         assert await owned_upload(session, upload.id, OWNER) is upload
         session.scalar.return_value = None
@@ -344,13 +345,13 @@ def test_upload_service_branches_are_deterministic() -> None:
         job = AnalysisJob(id=uuid.uuid4(), upload_id=upload.id, owner_id=OWNER)
         session.scalar.side_effect = [upload, job]
         assert (
-            await complete_upload(upload.id, OWNER, session, fake_storage)
+            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
         ).analysis_job_id == job.id
 
         upload.status = UploadStatus.CANCELLED
         session.scalar.side_effect = [upload, None]
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage)
+            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
         except Exception as error:
             assert error.code == "upload_cancelled"
 
@@ -358,22 +359,28 @@ def test_upload_service_branches_are_deterministic() -> None:
         session.scalar.side_effect = [upload, None]
         fake_storage.objects[upload.object_key] = StoredObject(10, SHA256)
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage)
+            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
         except Exception as error:
             assert error.code == "size_mismatch"
 
         session.scalar.side_effect = [upload, None]
         fake_storage.objects[upload.object_key] = StoredObject(1024, "b" * 64)
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage)
+            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
         except Exception as error:
             assert error.code == "checksum_mismatch"
 
         session.scalar.side_effect = [upload, None]
         fake_storage.objects[upload.object_key] = StoredObject(1024, SHA256)
-        assert (
-            await complete_upload(upload.id, OWNER, session, fake_storage)
-        ).status == "completed"
+        with patch(
+            "repwise_api.uploads.consume_analysis_usage", new=AsyncMock()
+        ) as consume:
+            assert (
+                await complete_upload(
+                    upload.id, OWNER, session, fake_storage, Settings()
+                )
+            ).status == "completed"
+            consume.assert_awaited_once()
 
         session.scalar.side_effect = None
         session.scalar.return_value = upload

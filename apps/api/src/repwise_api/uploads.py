@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from repwise_api.auth import authenticated_user
 from repwise_api.database import request_session
 from repwise_api.errors import ApiError
+from repwise_api.guardrails import consume_analysis_usage
 from repwise_api.models import AnalysisJob, MediaUpload, UploadStatus
+from repwise_api.settings import Settings, get_settings
 from repwise_api.storage import ObjectStorage
 
 MAX_UPLOAD_BYTES = 250 * 1024 * 1024
@@ -112,6 +114,7 @@ async def complete_upload(
     owner_id: Annotated[uuid.UUID, Depends(authenticated_user)],
     session: Annotated[AsyncSession, Depends(request_session)],
     object_storage: Annotated[ObjectStorage, Depends(storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> UploadResponse:
     upload = await owned_upload(session, upload_id, owner_id)
     existing_job = await session.scalar(
@@ -141,6 +144,15 @@ async def complete_upload(
     job = AnalysisJob(upload_id=upload.id, owner_id=owner_id)
     upload.status = UploadStatus.COMPLETED
     session.add(job)
+    await session.flush()
+    await consume_analysis_usage(
+        session,
+        owner_id=owner_id,
+        analysis_id=job.id,
+        event_key=f"analysis:{upload.id}",
+        limit_units=settings.beta_analysis_quota,
+        payments_enabled=settings.payments_enabled,
+    )
     await session.commit()
     return UploadResponse(
         upload_id=upload.id, status="completed", analysis_job_id=job.id
