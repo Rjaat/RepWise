@@ -151,7 +151,10 @@ def test_report_task_verifies_and_publishes_immutable_report() -> None:
 
     storage.download.side_effect = download
     checksum = hashlib.sha256(segmentation).hexdigest()
-    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        patch("repwise_api.worker.reject_tombstoned_analysis"),
+    ):
         result = publish_report_task(
             "segmentation.json", checksum, "analysis-1", "a" * 64, "b" * 64
         )
@@ -168,7 +171,10 @@ def test_report_task_rejects_corruption_and_invalid_shape() -> None:
         Path(destination).write_text("[]", encoding="utf-8")
 
     storage.download.side_effect = download
-    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        patch("repwise_api.worker.reject_tombstoned_analysis"),
+    ):
         with pytest.raises(ValueError, match="checksum mismatch"):
             publish_report_task("seg.json", "a" * 64, "id", "b" * 64, "c" * 64)
         checksum = hashlib.sha256(b"[]").hexdigest()
