@@ -9,6 +9,7 @@ import pytest
 from repwise_api.media import MediaProbe, PreflightResult
 from repwise_api.smoke import main
 from repwise_api.worker import (
+    capture_readiness_task,
     celery_app,
     media_preflight_task,
     pose_artifact_task,
@@ -172,3 +173,44 @@ def test_report_task_rejects_corruption_and_invalid_shape() -> None:
         checksum = hashlib.sha256(b"[]").hexdigest()
         with pytest.raises(ValueError, match="must be an object"):
             publish_report_task("seg.json", checksum, "id", "b" * 64, "c" * 64)
+
+
+def test_readiness_task_publishes_stable_instruction() -> None:
+    storage = Mock()
+    payload = [
+        {
+            "timestamp_seconds": index * 0.1,
+            "required_landmark_coverage": 0.95,
+            "full_body_visible": True,
+            "side_view_score": 0.9,
+            "motion_px": 1,
+        }
+        for index in range(5)
+    ]
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text(json.dumps(payload), encoding="utf-8")
+
+    storage.download.side_effect = download
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        result = capture_readiness_task("capture/observations.json")
+    assert result == {
+        "readiness_object_key": "capture/observations.json.readiness.v1.json",
+        "ready": True,
+        "code": "ready",
+    }
+    storage.upload.assert_called_once()
+
+
+def test_readiness_task_rejects_non_array_payload() -> None:
+    storage = Mock()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text("{}", encoding="utf-8")
+
+    storage.download.side_effect = download
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        pytest.raises(ValueError, match="must be an array"),
+    ):
+        capture_readiness_task("capture/observations.json")

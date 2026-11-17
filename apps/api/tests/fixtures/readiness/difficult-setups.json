@@ -1,0 +1,7 @@
+[
+  {"id":"ready-side-view","suitable":true,"coverage":0.98,"full_body":true,"side_score":0.94,"motion_px":1.0},
+  {"id":"feet-cropped","suitable":false,"coverage":0.94,"full_body":false,"side_score":0.91,"motion_px":1.0},
+  {"id":"frontal-view","suitable":false,"coverage":0.96,"full_body":true,"side_score":0.32,"motion_px":1.0},
+  {"id":"moving-phone","suitable":false,"coverage":0.96,"full_body":true,"side_score":0.90,"motion_px":11.0},
+  {"id":"dark-occlusion","suitable":false,"coverage":0.51,"full_body":true,"side_score":0.88,"motion_px":1.0}
+]
