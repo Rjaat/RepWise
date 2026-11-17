@@ -125,6 +125,19 @@
   border-color: var(--rw-color-success);
   background: var(--rw-color-success);
 }
+.practice-state {
+  display: grid;
+  gap: 4px;
+  margin: var(--rw-space-6) 0;
+  padding: var(--rw-space-4);
+  border: 1px solid var(--rw-color-gold);
+  border-radius: var(--rw-radius-control);
+  background: #f5ead7;
+}
+.practice-state span {
+  color: var(--rw-color-text-secondary);
+  line-height: 1.5;
+}
 .camera-instructions__upload {
   display: block;
   margin-top: var(--rw-space-4);

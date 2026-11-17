@@ -127,4 +127,41 @@ describe('CameraSetup', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Use camera' })).toBeDisabled()
   })
+
+  it('marks the practice repetition as excluded from the recorded set', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockResolvedValue(cameraStream()),
+        enumerateDevices: vi.fn().mockResolvedValue([]),
+      },
+    })
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: { isTypeSupported: () => true },
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    render(
+      <CameraSetup
+        readiness={{
+          ready: true,
+          instruction: 'Suitable for side-view assessment.',
+          checks: {
+            full_movement_visible: true,
+            side_view_suitable: true,
+            camera_stable: true,
+          },
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Use camera' }))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Try one practice rep' }),
+    )
+    expect(screen.getByText(/excluded from your set/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Finish practice rep' }))
+    expect(
+      screen.getByText(/will not be analysed or counted/i),
+    ).toBeInTheDocument()
+  })
 })

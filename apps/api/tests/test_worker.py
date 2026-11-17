@@ -13,6 +13,7 @@ from repwise_api.worker import (
     celery_app,
     media_preflight_task,
     pose_artifact_task,
+    practice_rep_task,
     publish_report_task,
     smoke_task,
     squat_segmentation_task,
@@ -214,3 +215,42 @@ def test_readiness_task_rejects_non_array_payload() -> None:
         pytest.raises(ValueError, match="must be an array"),
     ):
         capture_readiness_task("capture/observations.json")
+
+
+def test_practice_task_publishes_excluded_interval() -> None:
+    storage = Mock()
+    payload = [
+        {
+            "timestamp_seconds": index * 0.1,
+            "knee_angle_degrees": angle,
+            "required_landmark_coverage": 0.95,
+        }
+        for index, angle in enumerate((170, 165, 150, 135, 100, 106, 142, 160, 170))
+    ]
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text(json.dumps(payload), encoding="utf-8")
+
+    storage.download.side_effect = download
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        result = practice_rep_task("capture/practice-samples.json")
+    assert result == {
+        "practice_object_key": "capture/practice-samples.json.practice.v1.json",
+        "suitable": True,
+        "code": "suitable",
+    }
+    storage.upload.assert_called_once()
+
+
+def test_practice_task_rejects_non_array_payload() -> None:
+    storage = Mock()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text("{}", encoding="utf-8")
+
+    storage.download.side_effect = download
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        pytest.raises(ValueError, match="must be an array"),
+    ):
+        practice_rep_task("capture/practice-samples.json")
