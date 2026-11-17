@@ -96,6 +96,10 @@ class AnalysisJob(Base):
     )
     owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     status: Mapped[str] = mapped_column(String(32), default="queued")
+    report_schema_version: Mapped[str] = mapped_column(
+        String(64), default="repwise.evidence-report.v1"
+    )
+    rule_version: Mapped[str] = mapped_column(String(64), default="squat.side.v1")
     raw_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC) + timedelta(days=30)
     )
@@ -147,3 +151,31 @@ class DeletionRequest(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FeedbackCategory(enum.Enum):
+    WRONG_COUNT = "wrong_count"
+    WRONG_EXERCISE = "wrong_exercise"
+    BAD_TRACKING = "bad_tracking"
+    MISLEADING_ADVICE = "misleading_advice"
+
+
+class ReportFeedback(Base):
+    __tablename__ = "report_feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), index=True
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    category: Mapped[FeedbackCategory] = mapped_column(
+        Enum(FeedbackCategory, native_enum=False)
+    )
+    rep_index: Mapped[int | None]
+    check_id: Mapped[str | None] = mapped_column(String(128))
+    comment: Mapped[str | None] = mapped_column(String(1000))
+    report_schema_version: Mapped[str] = mapped_column(String(64))
+    rule_version: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

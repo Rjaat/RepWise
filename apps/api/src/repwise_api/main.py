@@ -11,6 +11,7 @@ from repwise_api.database import (
     database_ready,
 )
 from repwise_api.errors import ApiError, api_error_handler, unhandled_error_handler
+from repwise_api.feedback import router as feedback_router
 from repwise_api.middleware import request_id_middleware
 from repwise_api.retention import router as retention_router
 from repwise_api.settings import Settings, get_settings
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     application.include_router(uploads_router)
     application.include_router(auth_router)
     application.include_router(retention_router)
+    application.include_router(feedback_router)
     application.add_api_route(
         "/ready",
         readiness,
