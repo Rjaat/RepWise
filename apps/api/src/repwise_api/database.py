@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 
+from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -26,6 +27,11 @@ async def session_scope(
     factory: async_sessionmaker[AsyncSession],
 ) -> AsyncIterator[AsyncSession]:
     async with factory() as session:
+        yield session
+
+
+async def request_session(request: Request) -> AsyncIterator[AsyncSession]:
+    async with request.app.state.session_factory() as session:
         yield session
 
 

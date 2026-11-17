@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:56379/0"
     media_endpoint: str = "http://127.0.0.1:59000"
     media_bucket: str = "repwise-private"
+    media_access_key: str = "repwise-local"
+    media_secret_key: str = "repwise-local-only"
 
     @field_validator("database_url")
     @classmethod

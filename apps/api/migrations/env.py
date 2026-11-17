@@ -1,6 +1,7 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from repwise_api import models  # noqa: F401
 from repwise_api.database import Base
 from repwise_api.settings import get_settings
 
