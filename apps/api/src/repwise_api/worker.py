@@ -8,6 +8,7 @@ from celery import Celery
 
 from repwise_api.media import normalize_media
 from repwise_api.pose import ModelIdentity, build_pose_artifact_file
+from repwise_api.readiness import ReadinessObservation, evaluate_readiness
 from repwise_api.reports import build_squat_report
 from repwise_api.settings import get_settings
 from repwise_api.squat import extract_knee_angle_samples, segment_squats
@@ -42,6 +43,12 @@ class ReportTaskResult(TypedDict):
     report_object_key: str
     report_sha256: str
     rep_count: int
+
+
+class ReadinessTaskResult(TypedDict):
+    readiness_object_key: str
+    ready: bool
+    code: str
 
 
 settings = get_settings()
@@ -184,4 +191,37 @@ def publish_report_task(
         "report_object_key": report_key,
         "report_sha256": report.checksum(),
         "rep_count": len(report.reps),
+    }
+
+
+@celery_app.task(name="repwise.capture.readiness")  # type: ignore[misc]
+def capture_readiness_task(observations_object_key: str) -> ReadinessTaskResult:
+    storage = MinioObjectStorage(settings)
+    result_key = f"{observations_object_key}.readiness.v1.json"
+    with TemporaryDirectory(prefix="repwise-readiness-") as directory:
+        source_path = Path(directory) / "observations.json"
+        result_path = Path(directory) / "readiness.json"
+        storage.download(observations_object_key, str(source_path))
+        decoded = json.loads(source_path.read_text(encoding="utf-8"))
+        if not isinstance(decoded, list):
+            raise ValueError("Readiness observations must be an array")
+        observations = tuple(
+            ReadinessObservation(
+                timestamp_seconds=float(item["timestamp_seconds"]),
+                required_landmark_coverage=float(item["required_landmark_coverage"]),
+                full_body_visible=bool(item["full_body_visible"]),
+                side_view_score=float(item["side_view_score"]),
+                motion_px=float(item["motion_px"]),
+            )
+            for item in decoded
+        )
+        result = evaluate_readiness(observations)
+        result_path.write_text(
+            f"{json.dumps(result.to_dict(), sort_keys=True)}\n", encoding="utf-8"
+        )
+        storage.upload(result_key, str(result_path), "application/json")
+    return {
+        "readiness_object_key": result_key,
+        "ready": result.ready,
+        "code": result.code,
     }

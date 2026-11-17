@@ -90,4 +90,41 @@ describe('CameraSetup', () => {
     const { container } = render(<CameraSetup />)
     expect((await axe.run(container)).violations).toEqual([])
   })
+
+  it('shows one stable readiness prompt and named conditions', async () => {
+    const getUserMedia = vi.fn().mockResolvedValue(cameraStream())
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia,
+        enumerateDevices: vi.fn().mockResolvedValue([]),
+      },
+    })
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: { isTypeSupported: () => true },
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    render(
+      <CameraSetup
+        readiness={{
+          ready: false,
+          instruction: 'Move back until your full body and feet are visible.',
+          checks: {
+            full_movement_visible: false,
+            side_view_suitable: true,
+            camera_stable: true,
+          },
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Use camera' }))
+    expect(
+      await screen.findByRole('heading', { name: /Move back/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: 'Capture readiness' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use camera' })).toBeDisabled()
+  })
 })
