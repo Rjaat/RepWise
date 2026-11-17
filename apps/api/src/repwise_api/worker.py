@@ -8,6 +8,7 @@ from celery import Celery
 
 from repwise_api.media import normalize_media
 from repwise_api.pose import ModelIdentity, build_pose_artifact_file
+from repwise_api.practice import PracticeSample, evaluate_practice_rep
 from repwise_api.readiness import ReadinessObservation, evaluate_readiness
 from repwise_api.reports import build_squat_report
 from repwise_api.settings import get_settings
@@ -48,6 +49,12 @@ class ReportTaskResult(TypedDict):
 class ReadinessTaskResult(TypedDict):
     readiness_object_key: str
     ready: bool
+    code: str
+
+
+class PracticeTaskResult(TypedDict):
+    practice_object_key: str
+    suitable: bool
     code: str
 
 
@@ -223,5 +230,40 @@ def capture_readiness_task(observations_object_key: str) -> ReadinessTaskResult:
     return {
         "readiness_object_key": result_key,
         "ready": result.ready,
+        "code": result.code,
+    }
+
+
+@celery_app.task(name="repwise.capture.practice")  # type: ignore[misc]
+def practice_rep_task(samples_object_key: str) -> PracticeTaskResult:
+    storage = MinioObjectStorage(settings)
+    result_key = f"{samples_object_key}.practice.v1.json"
+    with TemporaryDirectory(prefix="repwise-practice-") as directory:
+        source_path = Path(directory) / "samples.json"
+        result_path = Path(directory) / "practice.json"
+        storage.download(samples_object_key, str(source_path))
+        decoded = json.loads(source_path.read_text(encoding="utf-8"))
+        if not isinstance(decoded, list):
+            raise ValueError("Practice samples must be an array")
+        samples = tuple(
+            PracticeSample(
+                timestamp_seconds=float(item["timestamp_seconds"]),
+                knee_angle_degrees=(
+                    None
+                    if item["knee_angle_degrees"] is None
+                    else float(item["knee_angle_degrees"])
+                ),
+                required_landmark_coverage=float(item["required_landmark_coverage"]),
+            )
+            for item in decoded
+        )
+        result = evaluate_practice_rep(samples)
+        result_path.write_text(
+            f"{json.dumps(result.to_dict(), sort_keys=True)}\n", encoding="utf-8"
+        )
+        storage.upload(result_key, str(result_path), "application/json")
+    return {
+        "practice_object_key": result_key,
+        "suitable": result.suitable,
         "code": result.code,
     }

@@ -58,15 +58,20 @@ const failureCopy: Record<CameraFailure, { title: string; message: string }> = {
 export function CameraSetup({
   onTelemetry = () => undefined,
   readiness,
+  practiceOutcome = 'suitable',
 }: {
   onTelemetry?: (event: TelemetryEvent) => void
   readiness?: Readiness
+  practiceOutcome?: 'suitable' | 'retry'
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [state, setState] = useState<CameraState>({ kind: 'idle' })
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState('')
+  const [practice, setPractice] = useState<
+    'not_started' | 'active' | 'suitable' | 'retry'
+  >('not_started')
 
   useEffect(() => () => stopStream(streamRef.current), [])
 
@@ -120,6 +125,19 @@ export function CameraSetup({
   }
 
   const failure = state.kind === 'failed' ? failureCopy[state.failure] : null
+  const canPractice = state.kind === 'ready' && readiness?.ready
+
+  function primaryAction() {
+    if (!canPractice) {
+      void startCamera()
+    } else if (practice === 'not_started') {
+      setPractice('active')
+    } else if (practice === 'active') {
+      setPractice(practiceOutcome)
+    } else if (practice === 'retry') {
+      setPractice('active')
+    }
+  }
 
   return (
     <div className="camera-setup">
@@ -173,6 +191,24 @@ export function CameraSetup({
               <li data-ready={readiness.checks.camera_stable}>Camera stable</li>
             </ul>
           )}
+          {canPractice && practice !== 'not_started' && (
+            <div className="practice-state" role="status">
+              <strong>
+                {practice === 'active'
+                  ? 'Practice repetition'
+                  : practice === 'suitable'
+                    ? 'Practice complete'
+                    : 'Try the practice repetition again'}
+              </strong>
+              <span>
+                {practice === 'active'
+                  ? 'Move through one slow squat. This repetition is excluded from your set.'
+                  : practice === 'suitable'
+                    ? 'Your movement stayed visible. This repetition will not be analysed or counted.'
+                    : 'Your full movement was not visible. Reposition the camera and retry.'}
+              </span>
+            </div>
+          )}
           {devices.length > 1 && (
             <label
               className="camera-instructions__device"
@@ -213,7 +249,7 @@ export function CameraSetup({
           )}
           <Button
             fullWidth
-            onClick={() => void startCamera()}
+            onClick={primaryAction}
             disabled={
               state.kind === 'requesting' ||
               (state.kind === 'ready' &&
@@ -221,13 +257,19 @@ export function CameraSetup({
                 !readiness.ready)
             }
           >
-            {state.kind === 'ready' && readiness?.ready
-              ? 'Try one practice rep'
-              : state.kind === 'requesting'
-                ? 'Connecting camera'
-                : state.kind === 'failed'
-                  ? 'Try camera again'
-                  : 'Use camera'}
+            {canPractice && practice === 'active'
+              ? 'Finish practice rep'
+              : canPractice && practice === 'suitable'
+                ? 'Practice ready'
+                : canPractice && practice === 'retry'
+                  ? 'Retry practice rep'
+                  : canPractice
+                    ? 'Try one practice rep'
+                    : state.kind === 'requesting'
+                      ? 'Connecting camera'
+                      : state.kind === 'failed'
+                        ? 'Try camera again'
+                        : 'Use camera'}
           </Button>
           <a className="camera-instructions__upload" href="/analyse">
             Upload a video instead
