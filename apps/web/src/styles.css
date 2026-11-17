@@ -1,4 +1,151 @@
 @import '@repwise/ui/tokens.css';
+.report {
+  display: grid;
+  max-width: 1120px;
+  gap: var(--rw-space-8);
+}
+.report__header,
+.rep-selector__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rw-space-6);
+}
+.report__header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -0.035em;
+}
+.report__header p:last-child,
+.evidence-video > p {
+  color: var(--rw-color-text-secondary);
+}
+.report__eyebrow {
+  margin: 0 0 var(--rw-space-2);
+  color: var(--rw-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.report__status {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--rw-color-warning);
+  background: #f5ead7;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.report__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid var(--rw-color-border-subtle);
+}
+.report__summary div {
+  display: grid;
+  gap: 4px;
+  padding: var(--rw-space-6);
+}
+.report__summary div + div {
+  border-left: 1px solid var(--rw-color-border-subtle);
+}
+.report__summary strong {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.report__summary span {
+  color: var(--rw-color-text-secondary);
+}
+.report__evidence-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  gap: var(--rw-space-6);
+}
+.evidence-video,
+.rep-detail,
+.rep-selector {
+  padding: var(--rw-space-6);
+  border: 1px solid var(--rw-color-border-subtle);
+  border-radius: var(--rw-radius-panel);
+  background: var(--rw-color-white);
+}
+.evidence-video h2,
+.rep-detail h2,
+.rep-selector h2 {
+  margin: 0;
+}
+.evidence-video video {
+  display: block;
+  width: 100%;
+  margin-top: var(--rw-space-4);
+  aspect-ratio: 16 / 9;
+  border-radius: var(--rw-radius-control);
+  background: var(--rw-color-ink);
+}
+.rep-detail > p:not(.report__eyebrow) {
+  color: var(--rw-color-text-secondary);
+  line-height: 1.55;
+}
+.rep-detail dl {
+  margin: var(--rw-space-6) 0 0;
+}
+.rep-detail dl div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--rw-space-4);
+  padding: var(--rw-space-4) 0;
+  border-top: 1px solid var(--rw-color-border-subtle);
+}
+.rep-detail dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rep-detail small {
+  display: block;
+  max-width: 24ch;
+  margin-top: 4px;
+  color: var(--rw-color-text-secondary);
+  font-weight: 400;
+}
+.rep-selector__heading > div:last-child {
+  display: flex;
+  gap: var(--rw-space-2);
+}
+.rep-selector button {
+  min-height: 44px;
+  padding: 0 var(--rw-space-4);
+  border: 1px solid var(--rw-color-border-control);
+  border-radius: var(--rw-radius-control);
+  color: var(--rw-color-ink);
+  background: var(--rw-color-white);
+  font-weight: 700;
+  cursor: pointer;
+}
+.rep-selector button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.rep-selector__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--rw-space-3);
+  margin-top: var(--rw-space-6);
+}
+.rep-selector__buttons button {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+}
+.rep-selector__buttons button[aria-pressed='true'] {
+  border-color: var(--rw-color-ink);
+  background: var(--rw-color-gold);
+}
+.rep-selector__buttons span {
+  font-variant-numeric: tabular-nums;
+}
 .upload-flow {
   display: grid;
   max-width: 1120px;
@@ -225,11 +372,28 @@
 }
 
 @media (max-width: 860px) {
+  .report__evidence-grid {
+    grid-template-columns: 1fr;
+  }
   .upload-flow__layout {
     grid-template-columns: 1fr;
   }
 }
 @media (max-width: 540px) {
+  .report__header,
+  .rep-selector__heading {
+    display: grid;
+  }
+  .report__summary {
+    grid-template-columns: 1fr;
+  }
+  .report__summary div + div {
+    border-top: 1px solid var(--rw-color-border-subtle);
+    border-left: 0;
+  }
+  .rep-selector__buttons {
+    grid-template-columns: 1fr;
+  }
   .upload-flow {
     gap: var(--rw-space-6);
   }
