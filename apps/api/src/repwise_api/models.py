@@ -10,6 +10,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     String,
     UniqueConstraint,
@@ -101,6 +102,11 @@ class AnalysisJob(Base):
         String(64), default="repwise.evidence-report.v1"
     )
     rule_version: Mapped[str] = mapped_column(String(64), default="squat.side.v1")
+    exercise: Mapped[str] = mapped_column(String(64), default="bodyweight_squat")
+    variant: Mapped[str] = mapped_column(String(64), default="bodyweight")
+    view: Mapped[str] = mapped_column(String(32), default="side")
+    assessment_coverage: Mapped[float | None] = mapped_column(Float)
+    rep_count: Mapped[int | None]
     retry_count: Mapped[int] = mapped_column(default=0)
     last_error_category: Mapped[str | None] = mapped_column(String(64))
     estimated_cost_micros: Mapped[int] = mapped_column(BigInteger, default=0)
