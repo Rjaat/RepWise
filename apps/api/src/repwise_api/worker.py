@@ -6,6 +6,7 @@ from typing import Any, TypedDict
 from celery import Celery
 
 from repwise_api.media import normalize_media
+from repwise_api.pose import ModelIdentity, build_pose_artifact_file
 from repwise_api.settings import get_settings
 from repwise_api.storage import MinioObjectStorage
 
@@ -19,6 +20,12 @@ class MediaTaskResult(TypedDict):
     normalized_object_key: str
     manifest_object_key: str
     preflight: dict[str, Any]
+
+
+class PoseTaskResult(TypedDict):
+    artifact_object_key: str
+    artifact_sha256: str
+    frame_count: int
 
 
 settings = get_settings()
@@ -62,4 +69,35 @@ def media_preflight_task(object_key: str, expected_sha256: str) -> MediaTaskResu
         "normalized_object_key": normalized_key,
         "manifest_object_key": manifest_key,
         "preflight": result.to_dict(),
+    }
+
+
+@celery_app.task(name="repwise.pose.persist")  # type: ignore[misc]
+def pose_artifact_task(
+    inference_object_key: str,
+    inference_sha256: str,
+    normalized_media_sha256: str,
+    model_name: str,
+    model_version: str,
+    model_sha256: str,
+) -> PoseTaskResult:
+    """Validate pinned inference output and publish a versioned private artifact."""
+    storage = MinioObjectStorage(settings)
+    artifact_key = f"{inference_object_key}.pose.v1.json"
+    with TemporaryDirectory(prefix="repwise-pose-") as directory:
+        inference = Path(directory) / "inference.json"
+        artifact_path = Path(directory) / "pose.v1.json"
+        storage.download(inference_object_key, str(inference))
+        artifact = build_pose_artifact_file(
+            inference,
+            artifact_path,
+            source_sha256=normalized_media_sha256,
+            model=ModelIdentity(model_name, model_version, model_sha256),
+            expected_input_sha256=inference_sha256,
+        )
+        storage.upload(artifact_key, str(artifact_path), "application/json")
+    return {
+        "artifact_object_key": artifact_key,
+        "artifact_sha256": str(artifact["artifact_sha256"]),
+        "frame_count": int(artifact["summary"]["frame_count"]),
     }
