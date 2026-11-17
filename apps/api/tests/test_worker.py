@@ -14,6 +14,7 @@ from repwise_api.worker import (
     celery_app,
     media_preflight_task,
     pose_artifact_task,
+    pose_inference_task,
     practice_rep_task,
     publish_report_task,
     smoke_task,
@@ -119,6 +120,39 @@ def test_pose_task_persists_private_versioned_artifact() -> None:
     storage.download.assert_called_once()
     storage.upload.assert_called_once()
     assert build.call_args.kwargs["model"].version == "1.2.3"
+
+
+def test_pose_inference_task_requires_model_configuration() -> None:
+    with (
+        patch("repwise_api.worker.settings.pose_model_path", None),
+        pytest.raises(RuntimeError, match="must be configured"),
+    ):
+        pose_inference_task("private/normalized.mp4")
+
+
+def test_pose_inference_task_persists_private_output() -> None:
+    storage = Mock()
+    inference_result = {
+        "inference_sha256": "a" * 64,
+        "frame_count": 12,
+        "detected_frame_count": 10,
+    }
+    with (
+        patch("repwise_api.worker.settings.pose_model_path", "/models/pose.task"),
+        patch("repwise_api.worker.settings.pose_model_sha256", "b" * 64),
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        patch(
+            "repwise_api.worker.run_pose_inference", return_value=inference_result
+        ) as infer,
+    ):
+        result = pose_inference_task("private/normalized.mp4")
+
+    assert result["inference_object_key"].endswith(".mediapipe.json")
+    assert result["detected_frame_count"] == 10
+    assert result["model_sha256"] == "b" * 64
+    assert infer.call_args.kwargs["expected_model_sha256"] == "b" * 64
+    storage.download.assert_called_once()
+    storage.upload.assert_called_once()
 
 
 def test_squat_task_verifies_and_persists_segmentation() -> None:

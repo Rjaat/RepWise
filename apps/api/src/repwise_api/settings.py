@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     beta_monthly_analysis_quota: int = Field(default=30, gt=0)
     beta_daily_analysis_quota: int = Field(default=5, gt=0)
     payments_enabled: bool = False
+    pose_model_path: str | None = None
+    pose_model_sha256: str | None = None
+    pose_model_name: str = "MediaPipe Pose Landmarker Full"
+    pose_model_version: str = "operator-pinned"
+    pose_sample_fps: float = Field(default=10.0, gt=0, le=30)
 
     @field_validator("database_url")
     @classmethod

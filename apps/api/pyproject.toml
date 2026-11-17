@@ -15,6 +15,9 @@ dependencies = [
     "uvicorn[standard]==0.38.0",
 ]
 
+[project.optional-dependencies]
+inference = ["mediapipe==0.10.31"]
+
 [dependency-groups]
 dev = [
     "aiosqlite==0.21.0",
