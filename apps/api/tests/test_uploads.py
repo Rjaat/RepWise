@@ -225,6 +225,30 @@ def test_upload_validation_and_storage_mismatch_errors_are_actionable() -> None:
     asyncio.run(exercise())
 
 
+def test_browser_origin_can_preflight_authenticated_uploads() -> None:
+    async def exercise() -> None:
+        application = create_app()
+        transport = ASGITransport(app=application)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.options(
+                "/v1/uploads",
+                headers={
+                    "Origin": "http://127.0.0.1:5173",
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": (
+                        "authorization,idempotency-key,content-type"
+                    ),
+                },
+            )
+        assert response.status_code == 200
+        assert (
+            response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+        )
+        await application.state.database_engine.dispose()
+
+    asyncio.run(exercise())
+
+
 def test_minio_adapter_signs_stats_and_removes_private_objects() -> None:
     client = Mock()
     client.presigned_put_object.return_value = "https://signed.test/upload"

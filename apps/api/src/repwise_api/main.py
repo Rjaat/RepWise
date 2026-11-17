@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from repwise_api.database import (
@@ -55,6 +56,13 @@ def create_app() -> FastAPI:
         application.state.database_engine
     )
     application.state.object_storage = MinioObjectStorage(settings)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.web_origin],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    )
     application.middleware("http")(request_id_middleware)
     application.add_exception_handler(ApiError, api_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
