@@ -13,6 +13,7 @@ from repwise_api.database import (
 )
 from repwise_api.errors import ApiError, api_error_handler, unhandled_error_handler
 from repwise_api.feedback import router as feedback_router
+from repwise_api.guardrails import router as guardrails_router
 from repwise_api.middleware import request_id_middleware
 from repwise_api.operations import router as operations_router
 from repwise_api.privacy import router as privacy_router
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     application.include_router(privacy_router)
     application.include_router(release_controls_router)
     application.include_router(progress_router)
+    application.include_router(guardrails_router)
     application.add_api_route(
         "/ready",
         readiness,

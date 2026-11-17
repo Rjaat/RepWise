@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     access_token_ttl_seconds: int = 900
     refresh_token_ttl_seconds: int = 30 * 24 * 60 * 60
     allow_legacy_bearer_identity: bool = True
+    beta_analysis_quota: int = Field(default=20, gt=0)
+    payments_enabled: bool = False
 
     @field_validator("database_url")
     @classmethod

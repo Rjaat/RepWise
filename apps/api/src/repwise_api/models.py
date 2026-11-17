@@ -368,3 +368,42 @@ class ReleasePromotion(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+
+
+class BetaQuota(Base):
+    __tablename__ = "beta_quotas"
+
+    owner_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    limit_units: Mapped[int]
+    used_units: Mapped[int] = mapped_column(default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class UsageLedger(Base):
+    __tablename__ = "usage_ledger"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("analysis_jobs.id", ondelete="CASCADE"), unique=True
+    )
+    event_key: Mapped[str] = mapped_column(String(128), unique=True)
+    units: Mapped[int] = mapped_column(default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class PaymentAttempt(Base):
+    __tablename__ = "payment_attempts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    usage_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usage_ledger.id", ondelete="RESTRICT"), unique=True
+    )
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

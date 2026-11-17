@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+import asyncio
+import uuid
+
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from repwise_api.database import Base, create_session_factory
+from repwise_api.errors import ApiError
+from repwise_api.guardrails import consume_analysis_usage
+from repwise_api.main import create_app
+from repwise_api.models import BetaQuota, PaymentAttempt, UsageLedger
+
+OWNER = uuid.UUID("10000000-0000-0000-0000-000000000001")
+
+
+def test_usage_is_idempotent_and_payment_attempts_are_flag_gated() -> None:
+    async def exercise() -> None:
+        engine = create_async_engine("sqlite+aiosqlite://")
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        factory = create_session_factory(engine)
+        analysis_id = uuid.uuid4()
+        async with factory() as db:
+            first = await consume_analysis_usage(
+                db,
+                owner_id=OWNER,
+                analysis_id=analysis_id,
+                event_key="analysis:one",
+                limit_units=2,
+                payments_enabled=True,
+            )
+            second = await consume_analysis_usage(
+                db,
+                owner_id=OWNER,
+                analysis_id=analysis_id,
+                event_key="analysis:one",
+                limit_units=2,
+                payments_enabled=True,
+            )
+            await db.commit()
+
+            assert first.id == second.id
+            assert await db.scalar(select(func.count(UsageLedger.id))) == 1
+            assert await db.scalar(select(func.count(PaymentAttempt.id))) == 1
+            quota = await db.get(BetaQuota, OWNER)
+            assert quota is not None
+            assert quota.used_units == 1
+            assert quota.limit_units == 2
+        await engine.dispose()
+
+    asyncio.run(exercise())
+
+
+def test_quota_failure_records_neither_usage_nor_payment() -> None:
+    async def exercise() -> None:
+        engine = create_async_engine("sqlite+aiosqlite://")
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        factory = create_session_factory(engine)
+        async with factory() as db:
+            await consume_analysis_usage(
+                db,
+                owner_id=OWNER,
+                analysis_id=uuid.uuid4(),
+                event_key="analysis:first",
+                limit_units=1,
+                payments_enabled=False,
+            )
+            await db.commit()
+            try:
+                await consume_analysis_usage(
+                    db,
+                    owner_id=OWNER,
+                    analysis_id=uuid.uuid4(),
+                    event_key="analysis:rejected",
+                    limit_units=1,
+                    payments_enabled=True,
+                )
+            except ApiError as error:
+                assert error.status_code == 429
+                assert error.code == "beta_quota_exhausted"
+            else:
+                raise AssertionError("quota exhaustion must reject usage")
+            await db.rollback()
+
+            assert await db.scalar(select(func.count(UsageLedger.id))) == 1
+            assert await db.scalar(select(func.count(PaymentAttempt.id))) == 0
+        await engine.dispose()
+
+    asyncio.run(exercise())
+
+
+def test_usage_summary_is_owner_scoped_and_transparent() -> None:
+    async def exercise() -> None:
+        application = create_app()
+        await application.state.database_engine.dispose()
+        engine = create_async_engine("sqlite+aiosqlite://")
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        application.state.database_engine = engine
+        application.state.session_factory = create_session_factory(engine)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=application), base_url="http://test"
+        ) as client:
+            empty = await client.get(
+                "/v1/usage", headers={"Authorization": f"Bearer {OWNER}"}
+            )
+            unauthenticated = await client.get("/v1/usage")
+            async with application.state.session_factory() as db:
+                await consume_analysis_usage(
+                    db,
+                    owner_id=OWNER,
+                    analysis_id=uuid.uuid4(),
+                    event_key="analysis:summary",
+                    limit_units=3,
+                    payments_enabled=False,
+                )
+                await db.commit()
+            used = await client.get(
+                "/v1/usage", headers={"Authorization": f"Bearer {OWNER}"}
+            )
+
+        assert empty.json() == {
+            "used_units": 0,
+            "limit_units": 0,
+            "remaining_units": 0,
+            "payments_enabled": False,
+        }
+        assert unauthenticated.status_code == 401
+        assert used.json() == {
+            "used_units": 1,
+            "limit_units": 3,
+            "remaining_units": 2,
+            "payments_enabled": False,
+        }
+        await engine.dispose()
+
+    asyncio.run(exercise())
