@@ -4,6 +4,8 @@ from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from repwise_api.analysis import enqueue_analysis
+from repwise_api.analysis import router as analysis_router
 from repwise_api.annotations import router as annotations_router
 from repwise_api.auth_routes import router as auth_router
 from repwise_api.database import (
@@ -65,6 +67,7 @@ def create_app() -> FastAPI:
         application.state.database_engine
     )
     application.state.object_storage = MinioObjectStorage(settings)
+    application.state.analysis_dispatcher = enqueue_analysis
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],
@@ -84,6 +87,7 @@ def create_app() -> FastAPI:
         tags=["operations"],
     )
     application.include_router(uploads_router)
+    application.include_router(analysis_router)
     application.include_router(auth_router)
     application.include_router(retention_router)
     application.include_router(feedback_router)

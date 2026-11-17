@@ -29,6 +29,7 @@ from repwise_api.settings import Settings
 
 async def operations_app():
     application = create_app()
+    application.state.analysis_dispatcher = lambda *_args: "retry-task-001"
     await application.state.database_engine.dispose()
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as connection:

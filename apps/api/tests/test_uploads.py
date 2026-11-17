@@ -61,6 +61,7 @@ def upload_body(**changes: Any) -> dict[str, Any]:
 def test_upload_lifecycle_is_owned_and_completion_is_idempotent() -> None:
     async def exercise() -> None:
         application = create_app()
+        application.state.analysis_dispatcher = lambda *_args: "task-001"
         await application.state.database_engine.dispose()
         engine = create_async_engine("sqlite+aiosqlite://")
         async with engine.begin() as connection:
@@ -118,6 +119,7 @@ def test_upload_lifecycle_is_owned_and_completion_is_idempotent() -> None:
 def test_cancel_is_idempotent_and_cancelled_upload_cannot_complete() -> None:
     async def exercise() -> None:
         application = create_app()
+        application.state.analysis_dispatcher = lambda *_args: "task-001"
         await application.state.database_engine.dispose()
         engine = create_async_engine("sqlite+aiosqlite://")
         async with engine.begin() as connection:
@@ -160,6 +162,7 @@ def test_cancel_is_idempotent_and_cancelled_upload_cannot_complete() -> None:
 def test_upload_validation_and_storage_mismatch_errors_are_actionable() -> None:
     async def exercise() -> None:
         application = create_app()
+        application.state.analysis_dispatcher = lambda *_args: "task-001"
         await application.state.database_engine.dispose()
         engine = create_async_engine("sqlite+aiosqlite://")
         async with engine.begin() as connection:
@@ -362,13 +365,27 @@ def test_upload_service_branches_are_deterministic() -> None:
         job = AnalysisJob(id=uuid.uuid4(), upload_id=upload.id, owner_id=OWNER)
         session.scalar.side_effect = [upload, job]
         assert (
-            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
+            await complete_upload(
+                upload.id,
+                OWNER,
+                session,
+                fake_storage,
+                Settings(),
+                lambda *_args: "task-existing",
+            )
         ).analysis_job_id == job.id
 
         upload.status = UploadStatus.CANCELLED
         session.scalar.side_effect = [upload, None]
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
+            await complete_upload(
+                upload.id,
+                OWNER,
+                session,
+                fake_storage,
+                Settings(),
+                lambda *_args: "task-cancelled",
+            )
         except Exception as error:
             assert error.code == "upload_cancelled"
 
@@ -376,14 +393,28 @@ def test_upload_service_branches_are_deterministic() -> None:
         session.scalar.side_effect = [upload, None]
         fake_storage.objects[upload.object_key] = StoredObject(10, SHA256)
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
+            await complete_upload(
+                upload.id,
+                OWNER,
+                session,
+                fake_storage,
+                Settings(),
+                lambda *_args: "task-size",
+            )
         except Exception as error:
             assert error.code == "size_mismatch"
 
         session.scalar.side_effect = [upload, None]
         fake_storage.objects[upload.object_key] = StoredObject(1024, "b" * 64)
         try:
-            await complete_upload(upload.id, OWNER, session, fake_storage, Settings())
+            await complete_upload(
+                upload.id,
+                OWNER,
+                session,
+                fake_storage,
+                Settings(),
+                lambda *_args: "task-checksum",
+            )
         except Exception as error:
             assert error.code == "checksum_mismatch"
 
@@ -394,10 +425,29 @@ def test_upload_service_branches_are_deterministic() -> None:
         ) as consume:
             assert (
                 await complete_upload(
-                    upload.id, OWNER, session, fake_storage, Settings()
+                    upload.id,
+                    OWNER,
+                    session,
+                    fake_storage,
+                    Settings(),
+                    lambda *_args: "task-new",
                 )
             ).status == "completed"
             consume.assert_awaited_once()
+
+        upload.status = UploadStatus.INITIATED
+        session.scalar.side_effect = [upload, None]
+        fake_storage.objects[upload.object_key] = StoredObject(1024, SHA256)
+        with patch("repwise_api.uploads.consume_analysis_usage", new=AsyncMock()):
+            failed_dispatch = await complete_upload(
+                upload.id,
+                OWNER,
+                session,
+                fake_storage,
+                Settings(),
+                Mock(side_effect=RuntimeError("broker down")),
+            )
+        assert failed_dispatch.analysis_status == "dispatch_failed"
 
         session.scalar.side_effect = None
         session.scalar.return_value = upload

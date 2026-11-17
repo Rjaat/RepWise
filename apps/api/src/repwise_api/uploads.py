@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from repwise_api.analysis import AnalysisDispatcher, request_dispatcher
 from repwise_api.auth import authenticated_user
 from repwise_api.database import request_session
 from repwise_api.errors import ApiError
@@ -37,6 +38,7 @@ class UploadResponse(BaseModel):
     status: Literal["initiated", "completed", "cancelled"]
     upload_url: str | None = None
     analysis_job_id: uuid.UUID | None = None
+    analysis_status: str | None = None
 
 
 def storage(request: Request) -> ObjectStorage:
@@ -119,6 +121,7 @@ async def complete_upload(
     session: Annotated[AsyncSession, Depends(request_session)],
     object_storage: Annotated[ObjectStorage, Depends(storage)],
     settings: Annotated[Settings, Depends(get_settings)],
+    dispatcher: Annotated[AnalysisDispatcher, Depends(request_dispatcher)],
 ) -> UploadResponse:
     upload = await owned_upload(session, upload_id, owner_id)
     existing_job = await session.scalar(
@@ -129,6 +132,7 @@ async def complete_upload(
             upload_id=upload.id,
             status="completed",
             analysis_job_id=existing_job.id,
+            analysis_status=existing_job.status,
         )
     if upload.status is UploadStatus.CANCELLED:
         raise ApiError(
@@ -159,8 +163,23 @@ async def complete_upload(
         payments_enabled=settings.payments_enabled,
     )
     await session.commit()
+    try:
+        job.worker_task_id = dispatcher(
+            job.id, upload.object_key, upload.expected_sha256
+        )
+        job.status = "queued"
+        job.current_stage = "preflight"
+        job.last_error_category = None
+    except Exception:
+        job.status = "dispatch_failed"
+        job.current_stage = "dispatch"
+        job.last_error_category = "broker_unavailable"
+    await session.commit()
     return UploadResponse(
-        upload_id=upload.id, status="completed", analysis_job_id=job.id
+        upload_id=upload.id,
+        status="completed",
+        analysis_job_id=job.id,
+        analysis_status=job.status,
     )
 
 
