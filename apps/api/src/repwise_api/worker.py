@@ -11,6 +11,7 @@ from repwise_api.pose import ModelIdentity, build_pose_artifact_file
 from repwise_api.practice import PracticeSample, evaluate_practice_rep
 from repwise_api.readiness import ReadinessObservation, evaluate_readiness
 from repwise_api.reports import build_squat_report
+from repwise_api.retention import reject_tombstoned_analysis
 from repwise_api.settings import get_settings
 from repwise_api.squat import extract_knee_angle_samples, segment_squats
 from repwise_api.storage import MinioObjectStorage
@@ -173,6 +174,7 @@ def publish_report_task(
     source_sha256: str,
     pose_artifact_sha256: str,
 ) -> ReportTaskResult:
+    reject_tombstoned_analysis(analysis_id, settings.database_url)
     storage = MinioObjectStorage(settings)
     report_key = f"analyses/{analysis_id}/report.v1.json"
     with TemporaryDirectory(prefix="repwise-report-") as directory:
@@ -193,6 +195,7 @@ def publish_report_task(
             segmentation_artifact_sha256=segmentation_file_sha256,
         )
         report_path.write_bytes(report.canonical_payload() + b"\n")
+        reject_tombstoned_analysis(analysis_id, settings.database_url)
         storage.upload(report_key, str(report_path), "application/json")
     return {
         "report_object_key": report_key,
