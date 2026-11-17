@@ -22,6 +22,10 @@ class ObjectStorage(Protocol):
 
     def remove(self, object_key: str) -> None: ...
 
+    def download(self, object_key: str, destination: str) -> None: ...
+
+    def upload(self, object_key: str, source: str, content_type: str) -> None: ...
+
 
 class MinioObjectStorage:
     def __init__(self, settings: Settings) -> None:
@@ -50,3 +54,11 @@ class MinioObjectStorage:
 
     def remove(self, object_key: str) -> None:
         self.client.remove_object(self.bucket, object_key)
+
+    def download(self, object_key: str, destination: str) -> None:
+        self.client.fget_object(self.bucket, object_key, destination)
+
+    def upload(self, object_key: str, source: str, content_type: str) -> None:
+        self.client.fput_object(
+            self.bucket, object_key, source, content_type=content_type
+        )
