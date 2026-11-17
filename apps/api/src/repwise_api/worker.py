@@ -6,6 +6,7 @@ from typing import Any, TypedDict
 
 from celery import Celery
 
+from repwise_api.inference import PoseInferenceError, run_pose_inference
 from repwise_api.media import normalize_media
 from repwise_api.pose import ModelIdentity, build_pose_artifact_file
 from repwise_api.practice import PracticeSample, evaluate_practice_rep
@@ -36,6 +37,16 @@ class PoseTaskResult(TypedDict):
     artifact_object_key: str
     artifact_sha256: str
     frame_count: int
+
+
+class PoseInferenceTaskResult(TypedDict):
+    inference_object_key: str
+    inference_sha256: str
+    frame_count: int
+    detected_frame_count: int
+    model_name: str
+    model_version: str
+    model_sha256: str
 
 
 class SegmentationTaskResult(TypedDict):
@@ -117,6 +128,38 @@ def analysis_preflight_task(
         "normalized_object_key": result["normalized_object_key"],
         "manifest_object_key": result["manifest_object_key"],
         "preflight": result["preflight"],
+    }
+
+
+@celery_app.task(name="repwise.pose.infer")  # type: ignore[misc]
+def pose_inference_task(normalized_object_key: str) -> PoseInferenceTaskResult:
+    """Run the configured, checksum-pinned pose model on normalized private media."""
+    if settings.pose_model_path is None or settings.pose_model_sha256 is None:
+        raise PoseInferenceError(
+            "model_not_configured", "Pose model path and SHA-256 must be configured"
+        )
+    storage = MinioObjectStorage(settings)
+    inference_key = f"{normalized_object_key}.mediapipe.json"
+    with TemporaryDirectory(prefix="repwise-inference-") as directory:
+        video = Path(directory) / "normalized.mp4"
+        inference = Path(directory) / "inference.json"
+        storage.download(normalized_object_key, str(video))
+        result = run_pose_inference(
+            video,
+            Path(settings.pose_model_path),
+            inference,
+            expected_model_sha256=settings.pose_model_sha256,
+            sample_fps=settings.pose_sample_fps,
+        )
+        storage.upload(inference_key, str(inference), "application/json")
+    return {
+        "inference_object_key": inference_key,
+        "inference_sha256": str(result["inference_sha256"]),
+        "frame_count": int(result["frame_count"]),
+        "detected_frame_count": int(result["detected_frame_count"]),
+        "model_name": settings.pose_model_name,
+        "model_version": settings.pose_model_version,
+        "model_sha256": settings.pose_model_sha256,
     }
 
 
