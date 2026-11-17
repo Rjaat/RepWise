@@ -150,7 +150,8 @@ async def complete_upload(
         owner_id=owner_id,
         analysis_id=job.id,
         event_key=f"analysis:{upload.id}",
-        limit_units=settings.beta_analysis_quota,
+        monthly_limit_units=settings.beta_monthly_analysis_quota,
+        daily_limit_units=settings.beta_daily_analysis_quota,
         payments_enabled=settings.payments_enabled,
     )
     await session.commit()
