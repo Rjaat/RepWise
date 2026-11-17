@@ -1,0 +1,44 @@
+{
+  "contract_id": "push-up.side",
+  "contract_version": 1,
+  "fixture_kind": "synthetic_rule_outputs",
+  "coach_signoff": null,
+  "release_thresholds": {"precision": 0.9, "recall": 0.7},
+  "checks": {
+    "rep_count": {
+      "cases": [
+        {"id": "two-clean-reps", "expected": true, "observed": true},
+        {"id": "partial-only", "expected": false, "observed": false},
+        {"id": "occluded-elbows", "expected": false, "observed": false}
+      ]
+    },
+    "phase_timing": {
+      "cases": [
+        {"id": "timestamped-clean-rep", "expected": true, "observed": true},
+        {"id": "missing-bottom", "expected": false, "observed": false},
+        {"id": "tracking-gap", "expected": false, "observed": false}
+      ]
+    },
+    "visible_depth_consistency": {
+      "cases": [
+        {"id": "consistent-visible-depth", "expected": true, "observed": true},
+        {"id": "camera-perspective-shift", "expected": false, "observed": true},
+        {"id": "mixed-depth", "expected": true, "observed": false}
+      ]
+    },
+    "incomplete_lockout": {
+      "cases": [
+        {"id": "clear-short-return", "expected": true, "observed": true},
+        {"id": "complete-return", "expected": false, "observed": false},
+        {"id": "wrist-occlusion", "expected": false, "observed": false}
+      ]
+    },
+    "trunk_line_consistency": {
+      "cases": [
+        {"id": "stable-visible-line", "expected": true, "observed": true},
+        {"id": "camera-motion", "expected": false, "observed": true},
+        {"id": "ankles-hidden", "expected": false, "observed": false}
+      ]
+    }
+  }
+}
