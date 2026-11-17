@@ -18,6 +18,8 @@ class StoredObject:
 class ObjectStorage(Protocol):
     def presigned_put(self, object_key: str) -> str: ...
 
+    def presigned_get(self, object_key: str) -> str: ...
+
     def stat(self, object_key: str) -> StoredObject: ...
 
     def remove(self, object_key: str) -> None: ...
@@ -41,6 +43,11 @@ class MinioObjectStorage:
     def presigned_put(self, object_key: str) -> str:
         return self.client.presigned_put_object(
             self.bucket, object_key, expires=timedelta(minutes=15)
+        )
+
+    def presigned_get(self, object_key: str) -> str:
+        return self.client.presigned_get_object(
+            self.bucket, object_key, expires=timedelta(minutes=5)
         )
 
     def stat(self, object_key: str) -> StoredObject:
