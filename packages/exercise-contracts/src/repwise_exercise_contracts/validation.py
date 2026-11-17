@@ -50,7 +50,16 @@ VIEW_CHECKS = {
             "apparent_knee_angle_excursion",
             "incomplete_return",
         }
-    )
+    ),
+    ("push_up", "side"): frozenset(
+        {
+            "rep_count",
+            "phase_timing",
+            "visible_depth_consistency",
+            "incomplete_lockout",
+            "trunk_line_consistency",
+        }
+    ),
 }
 REQUIRED_FIELDS = frozenset(
     {

@@ -1,0 +1,54 @@
+{
+  "$schema": "../schema/exercise-contract.schema.json",
+  "schema_version": "1.0.0",
+  "contract_id": "push-up.side",
+  "contract_version": 1,
+  "exercise": "push_up",
+  "variant": "floor_bodyweight",
+  "view": "side",
+  "pose_schema": "mediapipe_pose_33@1",
+  "required_landmarks": [
+    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+    "left_wrist", "right_wrist", "left_hip", "right_hip",
+    "left_ankle", "right_ankle"
+  ],
+  "view_constraints": {
+    "allowed": ["left_side", "right_side"],
+    "single_person": true,
+    "full_body_required": true,
+    "camera_height": "approximately torso height"
+  },
+  "minimum_observation": {
+    "landmark_visibility": 0.65,
+    "required_landmark_coverage": 0.85,
+    "minimum_complete_reps": 2
+  },
+  "phase_states": ["top", "lowering", "bottom", "pressing"],
+  "thresholds": {
+    "top_elbow_angle_degrees": {"min": 150, "max": 180},
+    "bottom_elbow_angle_degrees": {"min": 45, "max": 120},
+    "phase_duration_seconds": {"min": 0.1, "max": 10.0},
+    "trunk_line_change_degrees": {"min": 0, "max": 25}
+  },
+  "supported_checks": [
+    {"id": "rep_count", "enabled": false, "validation_status": "candidate"},
+    {"id": "phase_timing", "enabled": false, "validation_status": "candidate"},
+    {"id": "visible_depth_consistency", "enabled": false, "validation_status": "candidate"},
+    {"id": "incomplete_lockout", "enabled": false, "validation_status": "candidate"},
+    {"id": "trunk_line_consistency", "enabled": false, "validation_status": "candidate"}
+  ],
+  "unavailable_checks": [
+    "shoulder_tissue_loading", "pain_or_injury_risk", "precise_3d_joint_mechanics",
+    "hand_pressure_distribution"
+  ],
+  "explanation_templates": {
+    "visible_depth_inconsistency": "Visible elbow depth varied across assessable repetitions.",
+    "incomplete_lockout": "The visible elbow angle did not return to the contract's top range.",
+    "trunk_line_inconsistency": "The visible shoulder-to-ankle line varied during this repetition. This is an observation, not a diagnosis."
+  },
+  "validation": {
+    "status": "draft",
+    "coach_review_required": true,
+    "release_evidence": "../evaluation/push-up.side.v1.held-out.json"
+  }
+}
