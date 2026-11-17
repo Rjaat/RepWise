@@ -3,6 +3,7 @@ import { AppShell } from '@repwise/ui'
 import { UploadPanel } from './UploadPanel'
 import { EvidenceReport } from './EvidenceReport'
 import { CameraSetup } from './CameraSetup'
+import { RecordingSession } from './RecordingSession'
 
 const navigation = [
   { href: '/', label: 'Overview' },
@@ -14,10 +15,13 @@ const navigation = [
 export function App() {
   const isReport = window.location.pathname.startsWith('/reports/')
   const isCapture = window.location.pathname.startsWith('/capture')
+  const isRecording = window.location.pathname.startsWith('/record')
   return (
     <AppShell navigation={navigation}>
       {isReport ? (
         <EvidenceReport />
+      ) : isRecording ? (
+        <RecordingSession />
       ) : isCapture ? (
         <CameraSetup />
       ) : (
