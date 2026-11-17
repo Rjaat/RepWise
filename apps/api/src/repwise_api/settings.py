@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     media_bucket: str = "repwise-private"
     media_access_key: str = "repwise-local"
     media_secret_key: str = "repwise-local-only"
+    web_origin: str = "http://127.0.0.1:5173"
 
     @field_validator("database_url")
     @classmethod
