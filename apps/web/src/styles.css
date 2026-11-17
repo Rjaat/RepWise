@@ -4,6 +4,111 @@
   max-width: 1120px;
   gap: var(--rw-space-8);
 }
+.camera-setup {
+  display: grid;
+  max-width: 1120px;
+  gap: var(--rw-space-8);
+}
+.camera-setup__header {
+  max-width: 680px;
+}
+.camera-setup__header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -0.035em;
+}
+.camera-setup__header > p:last-child,
+.camera-instructions > p {
+  color: var(--rw-color-text-secondary);
+  line-height: 1.6;
+}
+.camera-setup__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: var(--rw-space-6);
+  align-items: start;
+}
+.camera-preview {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  border-radius: var(--rw-radius-panel);
+  color: var(--rw-color-ivory);
+  background: var(--rw-color-ink);
+}
+.camera-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-preview__empty {
+  position: absolute;
+  display: grid;
+  gap: var(--rw-space-2);
+  justify-items: center;
+  color: var(--rw-color-text-dark-secondary);
+}
+.camera-preview__empty strong {
+  color: var(--rw-color-ivory);
+}
+.camera-preview__corner {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-color: var(--rw-color-gold);
+  pointer-events: none;
+}
+.camera-preview__corner--one {
+  top: var(--rw-space-6);
+  left: var(--rw-space-6);
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+.camera-preview__corner--two {
+  right: var(--rw-space-6);
+  bottom: var(--rw-space-6);
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+}
+.camera-instructions h2 {
+  margin: var(--rw-space-6) 0 var(--rw-space-2);
+}
+.camera-instructions__device {
+  display: grid;
+  gap: var(--rw-space-2);
+  margin: var(--rw-space-6) 0;
+  font-weight: 700;
+}
+.camera-instructions__device select {
+  min-height: 48px;
+  padding: 0 var(--rw-space-3);
+  border: 1px solid var(--rw-color-border-control);
+  border-radius: var(--rw-radius-control);
+  background: var(--rw-color-white);
+}
+.camera-capability {
+  display: grid;
+  gap: 4px;
+  margin: var(--rw-space-6) 0;
+  padding: var(--rw-space-4);
+  border-left: 4px solid var(--rw-color-success);
+  border-radius: var(--rw-radius-control);
+  background: #e8f3ed;
+}
+.camera-capability span {
+  overflow-wrap: anywhere;
+  color: var(--rw-color-text-secondary);
+  font-size: 0.875rem;
+}
+.camera-instructions__upload {
+  display: block;
+  margin-top: var(--rw-space-4);
+  color: var(--rw-color-ink);
+  font-weight: 700;
+  text-align: center;
+}
 .report__header,
 .rep-selector__heading {
   display: flex;
@@ -372,6 +477,9 @@
 }
 
 @media (max-width: 860px) {
+  .camera-setup__layout {
+    grid-template-columns: 1fr;
+  }
   .report__evidence-grid {
     grid-template-columns: 1fr;
   }
