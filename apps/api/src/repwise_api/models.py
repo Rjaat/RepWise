@@ -329,3 +329,36 @@ class AccountDeletionRequest(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    check_id: Mapped[str] = mapped_column(String(128), unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    cohort_percent: Mapped[int] = mapped_column(default=0)
+    active_version: Mapped[str | None] = mapped_column(String(64))
+    last_known_good_version: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
+class ReleasePromotion(Base):
+    __tablename__ = "release_promotions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    feature_flag_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("feature_flags.id", ondelete="CASCADE"), index=True
+    )
+    rule_version: Mapped[str] = mapped_column(String(64))
+    approval_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("release_approvals.id", ondelete="RESTRICT")
+    )
+    action: Mapped[str] = mapped_column(String(32))
+    cohort_percent: Mapped[int]
+    actor_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
