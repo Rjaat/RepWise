@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     access_token_ttl_seconds: int = 900
     refresh_token_ttl_seconds: int = 30 * 24 * 60 * 60
     allow_legacy_bearer_identity: bool = True
-    beta_analysis_quota: int = Field(default=20, gt=0)
+    beta_monthly_analysis_quota: int = Field(default=30, gt=0)
+    beta_daily_analysis_quota: int = Field(default=5, gt=0)
     payments_enabled: bool = False
 
     @field_validator("database_url")

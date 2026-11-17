@@ -15,6 +15,8 @@ def upgrade() -> None:
         sa.Column("owner_id", sa.Uuid(), primary_key=True),
         sa.Column("limit_units", sa.Integer(), nullable=False),
         sa.Column("used_units", sa.Integer(), nullable=False),
+        sa.Column("cycle_started_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("resets_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_table(
@@ -33,6 +35,11 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_usage_ledger_owner_id", "usage_ledger", ["owner_id"])
+    op.create_index(
+        "ix_usage_ledger_owner_created_at",
+        "usage_ledger",
+        ["owner_id", "created_at"],
+    )
     op.create_table(
         "payment_attempts",
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -50,6 +57,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("payment_attempts")
+    op.drop_index("ix_usage_ledger_owner_created_at", table_name="usage_ledger")
     op.drop_index("ix_usage_ledger_owner_id", table_name="usage_ledger")
     op.drop_table("usage_ledger")
     op.drop_table("beta_quotas")
