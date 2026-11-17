@@ -3,8 +3,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from repwise_api.media import MediaProbe, PreflightResult
 from repwise_api.smoke import main
-from repwise_api.worker import celery_app, smoke_task
+from repwise_api.worker import celery_app, media_preflight_task, smoke_task
 
 
 def test_smoke_task_has_deterministic_json_result() -> None:
@@ -40,3 +41,20 @@ def test_smoke_entrypoint_validates_and_removes_result(
             assert "completed" in capsys.readouterr().out
 
     result.get.assert_called_once_with(timeout=20)
+
+
+def test_media_task_moves_private_artifacts_and_returns_manifest() -> None:
+    storage = Mock()
+    probe = MediaProbe("h264", 100, 100, 1, 0, False, False, "1", "1")
+    preflight = PreflightResult("a" * 64, "b" * 64, probe, probe, ())
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        patch("repwise_api.worker.normalize_media", return_value=preflight),
+    ):
+        result = media_preflight_task("users/1/uploads/2/source", "a" * 64)
+
+    assert result["normalized_object_key"].endswith(".normalized.mp4")
+    assert result["manifest_object_key"].endswith(".preflight.json")
+    assert result["preflight"]["normalized_sha256"] == "b" * 64
+    storage.download.assert_called_once()
+    assert storage.upload.call_count == 2

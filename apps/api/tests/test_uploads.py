@@ -270,6 +270,17 @@ def test_minio_adapter_signs_stats_and_removes_private_objects() -> None:
     assert stored.size == 12
     assert stored.sha256 == SHA256
     client.remove_object.assert_called_once_with("repwise-private", "private/source")
+    adapter.download("private/source", "/tmp/source")
+    adapter.upload("private/normalized", "/tmp/normalized", "video/mp4")
+    client.fget_object.assert_called_once_with(
+        "repwise-private", "private/source", "/tmp/source"
+    )
+    client.fput_object.assert_called_once_with(
+        "repwise-private",
+        "private/normalized",
+        "/tmp/normalized",
+        content_type="video/mp4",
+    )
 
 
 def test_minio_adapter_rejects_missing_object_size() -> None:
