@@ -1,0 +1,156 @@
+name: repwise
+
+services:
+  postgres:
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: repwise
+      POSTGRES_USER: repwise
+      POSTGRES_PASSWORD: ${REPWISE_POSTGRES_PASSWORD:?required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repwise -d repwise"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  media:
+    image: repwise-minio:portable
+    build:
+      context: infra/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${REPWISE_MEDIA_ACCESS_KEY:?required}
+      MINIO_ROOT_PASSWORD: ${REPWISE_MEDIA_SECRET_KEY:?required}
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    ports:
+      - "${REPWISE_BIND_ADDRESS:-127.0.0.1}:${REPWISE_MEDIA_PORT:-59000}:9000"
+      - "${REPWISE_BIND_ADDRESS:-127.0.0.1}:${REPWISE_MEDIA_CONSOLE_PORT:-59001}:9001"
+    volumes:
+      - media-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  media-init:
+    image: repwise-minio:portable
+    depends_on:
+      media:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${REPWISE_MEDIA_ACCESS_KEY:?required}
+      MINIO_ROOT_PASSWORD: ${REPWISE_MEDIA_SECRET_KEY:?required}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set local http://media:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing local/repwise-private
+        mc anonymous set none local/repwise-private
+    restart: "no"
+
+  migrate:
+    image: repwise-api:portable
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: &api-environment
+      REPWISE_ENV: development
+      REPWISE_DATABASE_URL: postgresql+psycopg://repwise:${REPWISE_POSTGRES_PASSWORD}@postgres:5432/repwise
+      REPWISE_REDIS_URL: redis://redis:6379/0
+      REPWISE_MEDIA_ENDPOINT: http://media:9000
+      REPWISE_MEDIA_PUBLIC_ENDPOINT: http://${REPWISE_PUBLIC_HOST:-127.0.0.1}:${REPWISE_MEDIA_PORT:-59000}
+      REPWISE_MEDIA_BUCKET: repwise-private
+      REPWISE_MEDIA_ACCESS_KEY: ${REPWISE_MEDIA_ACCESS_KEY}
+      REPWISE_MEDIA_SECRET_KEY: ${REPWISE_MEDIA_SECRET_KEY}
+      REPWISE_WEB_ORIGIN: http://${REPWISE_PUBLIC_HOST:-127.0.0.1}:${REPWISE_WEB_PORT:-8180}
+      REPWISE_AUTH_SIGNING_SECRET: ${REPWISE_AUTH_SIGNING_SECRET}
+      REPWISE_IDENTITY_ASSERTION_SECRET: ${REPWISE_IDENTITY_ASSERTION_SECRET}
+      REPWISE_ALLOW_LEGACY_BEARER_IDENTITY: "true"
+      REPWISE_PAYMENTS_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "-c", "alembic.ini", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    image: repwise-api:portable
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      media-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/ready')"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+  media-worker:
+    image: repwise-media-worker:portable
+    build:
+      context: .
+      dockerfile: workers/media/Dockerfile
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      media-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A repwise_api.worker.celery_app inspect ping --destination celery@$${HOSTNAME} --timeout 3 | grep -q pong"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    image: repwise-web:portable
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_INTERNAL_USER_ID: ${REPWISE_INTERNAL_USER_ID:-10000000-0000-0000-0000-000000000001}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${REPWISE_BIND_ADDRESS:-127.0.0.1}:${REPWISE_WEB_PORT:-8180}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  media-data:

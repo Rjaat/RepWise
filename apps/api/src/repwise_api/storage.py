@@ -16,7 +16,7 @@ class StoredObject:
 
 
 class ObjectStorage(Protocol):
-    def presigned_put(self, object_key: str) -> str: ...
+    def presigned_put(self, object_key: str, sha256: str) -> str: ...
 
     def presigned_get(self, object_key: str) -> str: ...
 
@@ -32,21 +32,36 @@ class ObjectStorage(Protocol):
 class MinioObjectStorage:
     def __init__(self, settings: Settings) -> None:
         endpoint = urlparse(settings.media_endpoint)
+        public_endpoint = urlparse(
+            settings.media_public_endpoint or settings.media_endpoint
+        )
         self.bucket = settings.media_bucket
         self.client = Minio(
             endpoint.netloc,
             access_key=settings.media_access_key,
             secret_key=settings.media_secret_key,
             secure=endpoint.scheme == "https",
+            region=settings.media_region,
+        )
+        self.signing_client = Minio(
+            public_endpoint.netloc,
+            access_key=settings.media_access_key,
+            secret_key=settings.media_secret_key,
+            secure=public_endpoint.scheme == "https",
+            region=settings.media_region,
         )
 
-    def presigned_put(self, object_key: str) -> str:
-        return self.client.presigned_put_object(
-            self.bucket, object_key, expires=timedelta(minutes=15)
+    def presigned_put(self, object_key: str, sha256: str) -> str:
+        return self.signing_client.get_presigned_url(
+            "PUT",
+            self.bucket,
+            object_key,
+            expires=timedelta(minutes=15),
+            extra_query_params={"x-amz-meta-sha256": sha256},
         )
 
     def presigned_get(self, object_key: str) -> str:
-        return self.client.presigned_get_object(
+        return self.signing_client.presigned_get_object(
             self.bucket, object_key, expires=timedelta(minutes=5)
         )
 

@@ -40,7 +40,6 @@ async function apiRequest(path: string, init: RequestInit): Promise<Response> {
 function putFile(
   url: string,
   file: File,
-  checksum: string,
   onProgress: (percent: number) => void,
   signal: AbortSignal,
 ): Promise<void> {
@@ -48,7 +47,6 @@ function putFile(
     const request = new XMLHttpRequest()
     request.open('PUT', url)
     request.setRequestHeader('Content-Type', file.type)
-    request.setRequestHeader('x-amz-meta-sha256', checksum)
     request.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable)
         onProgress(Math.round((event.loaded / event.total) * 100))
@@ -88,7 +86,7 @@ export const browserUploadClient: UploadClient = {
     const ticket = (await initiated.json()) as UploadTicket
     if (!ticket.upload_url) throw new Error('The upload URL is unavailable.')
     try {
-      await putFile(ticket.upload_url, file, checksum, onProgress, signal)
+      await putFile(ticket.upload_url, file, onProgress, signal)
       const completed = await apiRequest(
         `/v1/uploads/${ticket.upload_id}/complete`,
         { method: 'POST', signal },

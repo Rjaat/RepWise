@@ -15,6 +15,12 @@ Read the [end-to-end plan](RepWise_E2E_Plan.md) and
 
 ## Setup
 
+For the quickest setup on any machine with Docker, follow
+[SETUP.md](SETUP.md). It starts the complete application with one command and
+does not require local Node.js or Python installations.
+
+For native development, install the language toolchains and dependencies:
+
 ```bash
 cp .env.example .env
 corepack enable
