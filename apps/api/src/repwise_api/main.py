@@ -3,10 +3,16 @@ from typing import Annotated, Literal
 from fastapi import Depends, FastAPI, Request, Response, status
 from pydantic import BaseModel
 
-from repwise_api.database import create_database_engine, database_ready
+from repwise_api.database import (
+    create_database_engine,
+    create_session_factory,
+    database_ready,
+)
 from repwise_api.errors import ApiError, api_error_handler, unhandled_error_handler
 from repwise_api.middleware import request_id_middleware
 from repwise_api.settings import Settings, get_settings
+from repwise_api.storage import MinioObjectStorage
+from repwise_api.uploads import router as uploads_router
 
 
 class HealthResponse(BaseModel):
@@ -45,6 +51,10 @@ def create_app() -> FastAPI:
     )
     application.state.settings = settings
     application.state.database_engine = create_database_engine(settings.database_url)
+    application.state.session_factory = create_session_factory(
+        application.state.database_engine
+    )
+    application.state.object_storage = MinioObjectStorage(settings)
     application.middleware("http")(request_id_middleware)
     application.add_exception_handler(ApiError, api_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
@@ -56,6 +66,7 @@ def create_app() -> FastAPI:
         response_model=HealthResponse,
         tags=["operations"],
     )
+    application.include_router(uploads_router)
     application.add_api_route(
         "/ready",
         readiness,
