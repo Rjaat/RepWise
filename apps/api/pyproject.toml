@@ -8,6 +8,7 @@ dependencies = [
     "alembic==1.17.2",
     "celery[redis]==5.5.3",
     "fastapi==0.121.1",
+    "minio==7.2.18",
     "psycopg[binary]==3.2.12",
     "pydantic-settings==2.11.0",
     "sqlalchemy[asyncio]==2.0.44",
@@ -53,4 +54,5 @@ disable_error_code = ["import-untyped"]
 
 [tool.coverage.run]
 branch = true
+concurrency = ["greenlet", "thread"]
 source = ["repwise_api"]
