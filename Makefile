@@ -1,4 +1,4 @@
-.PHONY: setup dev-web dev-api services-up services-down services-smoke journey-smoke contracts-validate format lint typecheck test build check
+.PHONY: setup dev-web dev-api services-up services-down services-smoke journey-smoke contracts-validate release-readiness format lint typecheck test build check
 
 export UV_CACHE_DIR := .cache/uv
 
@@ -26,6 +26,9 @@ journey-smoke:
 
 contracts-validate:
 	PYTHONPATH=packages/exercise-contracts/src uv run --project apps/api python -m repwise_exercise_contracts.cli packages/exercise-contracts/contracts/*.json
+
+release-readiness:
+	uv run --project apps/api python -m repwise_api.release_readiness docs/releases/validated-beta-evidence.json
 
 format:
 	pnpm --filter @repwise/web format
