@@ -5,7 +5,12 @@ import pytest
 
 from repwise_api.media import MediaProbe, PreflightResult
 from repwise_api.smoke import main
-from repwise_api.worker import celery_app, media_preflight_task, smoke_task
+from repwise_api.worker import (
+    celery_app,
+    media_preflight_task,
+    pose_artifact_task,
+    smoke_task,
+)
 
 
 def test_smoke_task_has_deterministic_json_result() -> None:
@@ -58,3 +63,34 @@ def test_media_task_moves_private_artifacts_and_returns_manifest() -> None:
     assert result["preflight"]["normalized_sha256"] == "b" * 64
     storage.download.assert_called_once()
     assert storage.upload.call_count == 2
+
+
+def test_pose_task_persists_private_versioned_artifact() -> None:
+    storage = Mock()
+    artifact = {
+        "artifact_sha256": "d" * 64,
+        "summary": {"frame_count": 3},
+    }
+    with (
+        patch("repwise_api.worker.MinioObjectStorage", return_value=storage),
+        patch(
+            "repwise_api.worker.build_pose_artifact_file", return_value=artifact
+        ) as build,
+    ):
+        result = pose_artifact_task(
+            "users/1/inference.json",
+            "a" * 64,
+            "b" * 64,
+            "MediaPipe Pose Landmarker Full",
+            "1.2.3",
+            "c" * 64,
+        )
+
+    assert result == {
+        "artifact_object_key": "users/1/inference.json.pose.v1.json",
+        "artifact_sha256": "d" * 64,
+        "frame_count": 3,
+    }
+    storage.download.assert_called_once()
+    storage.upload.assert_called_once()
+    assert build.call_args.kwargs["model"].version == "1.2.3"
