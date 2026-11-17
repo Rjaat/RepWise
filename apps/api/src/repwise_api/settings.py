@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://repwise:repwise@127.0.0.1:55432/repwise"
     redis_url: str = "redis://127.0.0.1:56379/0"
     media_endpoint: str = "http://127.0.0.1:59000"
+    media_public_endpoint: str | None = None
+    media_region: str = "us-east-1"
     media_bucket: str = "repwise-private"
     media_access_key: str = "repwise-local"
     media_secret_key: str = "repwise-local-only"

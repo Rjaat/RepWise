@@ -46,7 +46,7 @@ class RetentionStorage:
     def stat(self, object_key: str) -> StoredObject:
         return StoredObject(len(self.objects[object_key]), None)
 
-    def presigned_put(self, object_key: str) -> str:
+    def presigned_put(self, object_key: str, sha256: str) -> str:
         return f"https://storage.test/{object_key}"
 
     def download(self, object_key: str, destination: str) -> None:

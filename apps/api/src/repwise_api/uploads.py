@@ -83,7 +83,9 @@ async def initiate_upload(
             upload_id=existing.id,
             status=existing.status.value,
             upload_url=(
-                object_storage.presigned_put(existing.object_key)
+                object_storage.presigned_put(
+                    existing.object_key, existing.expected_sha256
+                )
                 if existing.status is UploadStatus.INITIATED
                 else None
             ),
@@ -104,7 +106,9 @@ async def initiate_upload(
     return UploadResponse(
         upload_id=upload.id,
         status="initiated",
-        upload_url=object_storage.presigned_put(upload.object_key),
+        upload_url=object_storage.presigned_put(
+            upload.object_key, upload.expected_sha256
+        ),
     )
 
 

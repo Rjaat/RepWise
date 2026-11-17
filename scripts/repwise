@@ -1,0 +1,87 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPOSITORY_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+ENV_FILE="$REPOSITORY_ROOT/.env.portable"
+COMPOSE_FILE="$REPOSITORY_ROOT/compose.portable.yaml"
+
+random_secret() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 32
+    else
+        od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+    fi
+}
+
+create_environment() {
+    if [ -f "$ENV_FILE" ]; then
+        return
+    fi
+    umask 077
+    postgres_password=$(random_secret)
+    media_secret=$(random_secret)
+    auth_secret=$(random_secret)
+    identity_secret=$(random_secret)
+    {
+        printf '%s\n' 'REPWISE_PUBLIC_HOST=127.0.0.1'
+        printf '%s\n' 'REPWISE_BIND_ADDRESS=127.0.0.1'
+        printf '%s\n' 'REPWISE_WEB_PORT=8180'
+        printf '%s\n' 'REPWISE_MEDIA_PORT=59000'
+        printf '%s\n' 'REPWISE_MEDIA_CONSOLE_PORT=59001'
+        printf '%s\n' 'REPWISE_INTERNAL_USER_ID=10000000-0000-0000-0000-000000000001'
+        printf 'REPWISE_POSTGRES_PASSWORD=%s\n' "$postgres_password"
+        printf '%s\n' 'REPWISE_MEDIA_ACCESS_KEY=repwise-local'
+        printf 'REPWISE_MEDIA_SECRET_KEY=%s\n' "$media_secret"
+        printf 'REPWISE_AUTH_SIGNING_SECRET=%s\n' "$auth_secret"
+        printf 'REPWISE_IDENTITY_ASSERTION_SECRET=%s\n' "$identity_secret"
+    } >"$ENV_FILE"
+    printf 'Created %s with private random secrets.\n' "$ENV_FILE"
+}
+
+compose() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+require_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        printf '%s\n' 'Docker with Compose v2 is required.' >&2
+        exit 1
+    fi
+    docker compose version >/dev/null
+}
+
+command=${1:-setup}
+require_docker
+case "$command" in
+    setup|up)
+        create_environment
+        compose up -d --build --wait
+        public_host=$(sed -n 's/^REPWISE_PUBLIC_HOST=//p' "$ENV_FILE")
+        web_port=$(sed -n 's/^REPWISE_WEB_PORT=//p' "$ENV_FILE")
+        console_port=$(sed -n 's/^REPWISE_MEDIA_CONSOLE_PORT=//p' "$ENV_FILE")
+        printf '\nRepWise: http://%s:%s\n' "$public_host" "$web_port"
+        printf 'Media console: http://%s:%s\n' "$public_host" "$console_port"
+        ;;
+    down)
+        create_environment
+        compose down
+        ;;
+    status)
+        create_environment
+        compose ps
+        ;;
+    logs)
+        create_environment
+        compose logs -f --tail=200
+        ;;
+    update)
+        create_environment
+        git -C "$REPOSITORY_ROOT" pull --ff-only
+        compose up -d --build --wait
+        ;;
+    *)
+        printf '%s\n' 'Usage: ./scripts/repwise {setup|up|down|status|logs|update}' >&2
+        exit 2
+        ;;
+esac

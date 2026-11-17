@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import timedelta
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
@@ -32,7 +33,7 @@ class FakeStorage:
         self.objects: dict[str, StoredObject] = {}
         self.removed: list[str] = []
 
-    def presigned_put(self, object_key: str) -> str:
+    def presigned_put(self, object_key: str, sha256: str) -> str:
         return f"https://storage.test/{object_key}?signed=true"
 
     def stat(self, object_key: str) -> StoredObject:
@@ -251,23 +252,39 @@ def test_browser_origin_can_preflight_authenticated_uploads() -> None:
 
 def test_minio_adapter_signs_stats_and_removes_private_objects() -> None:
     client = Mock()
-    client.presigned_put_object.return_value = "https://signed.test/upload"
+    client.get_presigned_url.return_value = "https://signed.test/upload"
     client.presigned_get_object.return_value = "https://signed.test/review"
     stat = Mock(size=12, metadata={"X-Amz-Meta-Sha256": SHA256})
     client.stat_object.return_value = stat
 
     with patch("repwise_api.storage.Minio", return_value=client) as constructor:
-        adapter = MinioObjectStorage(Settings())
-        assert adapter.presigned_put("private/source") == "https://signed.test/upload"
+        adapter = MinioObjectStorage(
+            Settings(media_public_endpoint="https://public-media.test")
+        )
+        assert (
+            adapter.presigned_put("private/source", SHA256)
+            == "https://signed.test/upload"
+        )
+        assert constructor.call_args_list[1].args[0] == "public-media.test"
+        assert constructor.call_args_list[1].kwargs["secure"] is True
         assert adapter.presigned_get("private/source") == "https://signed.test/review"
         stored = adapter.stat("private/source")
         adapter.remove("private/source")
 
-    constructor.assert_called_once_with(
+    assert constructor.call_args_list[0] == call(
         "127.0.0.1:59000",
         access_key="repwise-local",
         secret_key="repwise-local-only",
         secure=False,
+        region="us-east-1",
+    )
+    assert constructor.call_args_list[1].kwargs["region"] == "us-east-1"
+    client.get_presigned_url.assert_called_once_with(
+        "PUT",
+        "repwise-private",
+        "private/source",
+        expires=timedelta(minutes=15),
+        extra_query_params={"x-amz-meta-sha256": SHA256},
     )
     assert stored.size == 12
     assert stored.sha256 == SHA256
