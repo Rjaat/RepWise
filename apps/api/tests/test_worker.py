@@ -12,6 +12,7 @@ from repwise_api.worker import (
     celery_app,
     media_preflight_task,
     pose_artifact_task,
+    publish_report_task,
     smoke_task,
     squat_segmentation_task,
 )
@@ -135,3 +136,39 @@ def test_squat_task_rejects_checksum_and_non_object_artifact() -> None:
         checksum = hashlib.sha256(b"[]").hexdigest()
         with pytest.raises(ValueError, match="must be an object"):
             squat_segmentation_task("pose.json", checksum, 100, 200)
+
+
+def test_report_task_verifies_and_publishes_immutable_report() -> None:
+    storage = Mock()
+    segmentation = json.dumps(
+        {"complete_reps": [], "partial_reps": []}, sort_keys=True
+    ).encode()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_bytes(segmentation)
+
+    storage.download.side_effect = download
+    checksum = hashlib.sha256(segmentation).hexdigest()
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        result = publish_report_task(
+            "segmentation.json", checksum, "analysis-1", "a" * 64, "b" * 64
+        )
+    assert result["report_object_key"] == "analyses/analysis-1/report.v1.json"
+    assert result["rep_count"] == 0
+    assert len(result["report_sha256"]) == 64
+    storage.upload.assert_called_once()
+
+
+def test_report_task_rejects_corruption_and_invalid_shape() -> None:
+    storage = Mock()
+
+    def download(_key: str, destination: str) -> None:
+        Path(destination).write_text("[]", encoding="utf-8")
+
+    storage.download.side_effect = download
+    with patch("repwise_api.worker.MinioObjectStorage", return_value=storage):
+        with pytest.raises(ValueError, match="checksum mismatch"):
+            publish_report_task("seg.json", "a" * 64, "id", "b" * 64, "c" * 64)
+        checksum = hashlib.sha256(b"[]").hexdigest()
+        with pytest.raises(ValueError, match="must be an object"):
+            publish_report_task("seg.json", checksum, "id", "b" * 64, "c" * 64)

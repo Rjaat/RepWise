@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -68,3 +68,66 @@ class EvidenceReport(ImmutableModel):
 
     def checksum(self) -> str:
         return hashlib.sha256(self.canonical_payload()).hexdigest()
+
+
+def build_squat_report(
+    segmentation: dict[str, Any],
+    *,
+    analysis_id: str,
+    source_sha256: str,
+    pose_artifact_sha256: str,
+    segmentation_artifact_sha256: str,
+) -> EvidenceReport:
+    reps: list[ReportRep] = []
+    raw_reps = [
+        *segmentation.get("complete_reps", []),
+        *segmentation.get("partial_reps", []),
+    ]
+    for raw in raw_reps:
+        phases = {phase["phase"]: phase for phase in raw["phases"]}
+
+        metrics: list[ReportMetric] = []
+        for metric_id, label, phase in (
+            ("lowering_time", "Lowering time", "descending"),
+            ("lifting_time", "Lifting time", "ascending"),
+        ):
+            interval = phases.get(phase)
+            value = (
+                None
+                if interval is None
+                else float(interval["end_seconds"] - interval["start_seconds"])
+            )
+            metrics.append(
+                ReportMetric(
+                    id=metric_id,
+                    label=label,
+                    unit="seconds",
+                    state="assessed" if value is not None else "not_assessable",
+                    value=value,
+                    reason=None
+                    if value is not None
+                    else f"{phase.title()} phase unavailable",
+                )
+            )
+        reps.append(
+            ReportRep(
+                index=int(raw["index"]),
+                complete=bool(raw["complete"]),
+                evidence=EvidenceLink(
+                    start_seconds=float(raw["start_seconds"]),
+                    end_seconds=float(raw["end_seconds"]),
+                ),
+                metrics=tuple(metrics),
+            )
+        )
+    return EvidenceReport(
+        schema_version="repwise.evidence-report.v1",
+        analysis_id=analysis_id,
+        exercise="Bodyweight squat",
+        variant="Bodyweight",
+        view="Side",
+        source_sha256=source_sha256,
+        pose_artifact_sha256=pose_artifact_sha256,
+        segmentation_artifact_sha256=segmentation_artifact_sha256,
+        reps=tuple(reps),
+    )
