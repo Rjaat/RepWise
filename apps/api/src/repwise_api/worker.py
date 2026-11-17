@@ -75,12 +75,12 @@ celery_app.conf.update(
 )
 
 
-@celery_app.task(name="repwise.smoke")  # type: ignore[misc]
+@celery_app.task(name="repwise.smoke")  # type: ignore[untyped-decorator]
 def smoke_task() -> SmokeResult:
     return {"status": "ok", "worker": "media"}
 
 
-@celery_app.task(name="repwise.media.preflight")  # type: ignore[misc]
+@celery_app.task(name="repwise.media.preflight")  # type: ignore[untyped-decorator]
 def media_preflight_task(object_key: str, expected_sha256: str) -> MediaTaskResult:
     storage = MinioObjectStorage(settings)
     normalized_key = f"{object_key}.normalized.mp4"
@@ -103,7 +103,7 @@ def media_preflight_task(object_key: str, expected_sha256: str) -> MediaTaskResu
     }
 
 
-@celery_app.task(name="repwise.pose.persist")  # type: ignore[misc]
+@celery_app.task(name="repwise.pose.persist")  # type: ignore[untyped-decorator]
 def pose_artifact_task(
     inference_object_key: str,
     inference_sha256: str,
@@ -134,7 +134,7 @@ def pose_artifact_task(
     }
 
 
-@celery_app.task(name="repwise.squat.segment")  # type: ignore[misc]
+@celery_app.task(name="repwise.squat.segment")  # type: ignore[untyped-decorator]
 def squat_segmentation_task(
     pose_artifact_key: str,
     pose_artifact_sha256: str,
@@ -166,7 +166,7 @@ def squat_segmentation_task(
     }
 
 
-@celery_app.task(name="repwise.report.publish")  # type: ignore[misc]
+@celery_app.task(name="repwise.report.publish")  # type: ignore[untyped-decorator]
 def publish_report_task(
     segmentation_object_key: str,
     segmentation_file_sha256: str,
@@ -204,7 +204,7 @@ def publish_report_task(
     }
 
 
-@celery_app.task(name="repwise.capture.readiness")  # type: ignore[misc]
+@celery_app.task(name="repwise.capture.readiness")  # type: ignore[untyped-decorator]
 def capture_readiness_task(observations_object_key: str) -> ReadinessTaskResult:
     storage = MinioObjectStorage(settings)
     result_key = f"{observations_object_key}.readiness.v1.json"
@@ -237,7 +237,7 @@ def capture_readiness_task(observations_object_key: str) -> ReadinessTaskResult:
     }
 
 
-@celery_app.task(name="repwise.capture.practice")  # type: ignore[misc]
+@celery_app.task(name="repwise.capture.practice")  # type: ignore[untyped-decorator]
 def practice_rep_task(samples_object_key: str) -> PracticeTaskResult:
     storage = MinioObjectStorage(settings)
     result_key = f"{samples_object_key}.practice.v1.json"
