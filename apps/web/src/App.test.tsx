@@ -26,4 +26,13 @@ describe('App', () => {
     const results = await axe.run(container)
     expect(results.violations).toEqual([])
   })
+
+  it('renders the evidence report route', () => {
+    window.history.pushState({}, '', '/reports/sample')
+    render(<App />)
+    expect(
+      screen.getByRole('heading', { name: 'Bodyweight squat report' }),
+    ).toBeInTheDocument()
+    window.history.pushState({}, '', '/')
+  })
 })
